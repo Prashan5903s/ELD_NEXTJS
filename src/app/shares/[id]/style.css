@@ -1,0 +1,161 @@
+.shares-container {
+  max-width: 1440px;
+  padding: 0 8%;
+  margin: 0px auto;
+}
+
+.download-pdf-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-gap: 50px;
+  min-height: 500px;
+}
+
+.share-pdf-logo-div {
+  min-width: 500px;
+}
+
+.download-pdf-section h1 {
+  max-width: 590px;
+  margin-top: 40px;
+  font-size: 44px;
+}
+
+.download-pdf-section img {
+  margin-top: 20px;
+}
+
+.shares-btn-group {
+  margin-top: 40px;
+  display: flex;
+  gap: 15px;
+}
+
+.shares-btn-group button {
+  width: 50%;
+  border-radius: 0px !important;
+  display: block;
+  max-width: 180px;
+}
+
+.shares-highway-img {
+  margin: 0 !important;
+  height: 500px;
+  width: 100vw;
+  object-fit: cover;
+}
+
+.shares-feature-section h5 {
+  font-size: 28px;
+}
+
+.shares-feature-section p {
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 24px;
+  color: #666666;
+}
+
+.share-reliable-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-gap: 50px;
+}
+
+.shares-feature-section-bottom {
+  position: relative;
+}
+.down-border {
+  height: 2px;
+  width: 48px;
+  background-color: #00b4ff;
+  position: absolute;
+  right: 47%;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.shares-feature-section-inner p {
+  margin-bottom: 0;
+}
+
+.border-blue {
+  border-left: 2px solid #00b4ff;
+  padding-left: 40px;
+}
+.accordian-heading button {
+  font-size: 22px;
+}
+.accordion-body {
+  font-size: 18px;
+  color: #666666;
+}
+.shares-footer a {
+  color: #999 !important;
+  padding: 0 28px;
+  border-left: 1px solid rgba(109, 130, 144, 0.5);
+}
+
+.accordian-img-mobile {
+  display: none;
+}
+.pdf-page {
+  height: 842px;
+  overflow: hidden;
+  page-break-after: always;
+}
+
+@media (max-width: 1200px) {
+  .shares-feature-section h5 {
+    font-size: 22px;
+  }
+  .shares-feature-section p {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 960px) {
+  .download-pdf-section {
+    grid-template-columns: 1fr;
+  }
+  .shares-highway-img {
+    display: none;
+  }
+  .share-pdf-logo-div {
+    min-width: auto;
+  }
+  .download-pdf-section {
+    min-height: auto;
+  }
+  .shares-feature-section {
+    flex-direction: column;
+    text-align: center;
+    gap: 20px;
+  }
+  .border-blue {
+    border: 0;
+    padding-left: 0px !important;
+  }
+  .down-border {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+@media (max-width: 768px) {
+  .accordian-images-desktop {
+    display: none !important;
+  }
+  .accordian-img-mobile {
+    display: block;
+    margin-top: 20px;
+  }
+}
+
+@media (max-width: 608px) {
+  .shares-footer a {
+    border-left: 0;
+  }
+  .footer-links {
+    flex-direction: column;
+  }
+}

@@ -1,0 +1,55 @@
+.mapDiv {
+  margin-top: 10px;
+  width: 70%;
+  overflow: auto !important;
+}
+.mapDivMobile {
+  margin-top: 10px;
+  width: 100%;
+  overflow: auto !important;
+}
+.leftSideScroll {
+  width: 30%;
+}
+
+.leftSideScrolMobile {
+  width: 100%;
+}
+
+.chartDiv {
+  min-width: 100%;
+  margin: 0px;
+  overflow-x: scroll;
+}
+
+.graphcontainer,
+.graphclass {
+  display: none;
+}
+.linechartContainer {
+  justify-content: left;
+}
+
+/* .expandDiv{
+  width: 95%;
+} */
+
+.chartDiv tr:nth-child(1) {
+  height: 2.8% !important;
+}
+
+.chartDiv table tr:nth-child(2) {
+  height: 2.5% !important;
+}
+
+.chartDiv table tr:nth-child(3) {
+  height: 2.5% !important;
+}
+.chartDiv table tr:nth-child(4) {
+  height: 0% !important;
+}
+
+.chartDiv div > table {
+  margin: 0px;
+  height: 92%;
+}

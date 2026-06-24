@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": false,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "src/app/profile.js/page",
+    "src/app/dashboard/editform/page.jsx",
+    "src/app/dashboard/assets/vehicles/page.tsx",
+    "src/app/dashboard/page.jsx",
+    "src/app/dashboard/vehiclesasasa/page.ssx",
+    "src/app/dashboard/vehiclesasasa/page.jsx",
+    "src/app/validation/EC/page.jsx"
+, "src/Components/driveractivity/activityForm.tsx", "src/app/Shadow/page.jsx", "src/Components/reports/page.jsx", "src/Components/reports/components/events-table.jsx", "src/Components/reports/components/events-filters.jsx", "src/Components/reports/layout.jsx", "src/app/dashboard/alert/alertForm/AddalertPopup.jsx", "src/driverComponent/fleetUser/page.jsx", "src/driverComponent/chatBox.jsx"  ],
+  "exclude": ["node_modules"]
+}

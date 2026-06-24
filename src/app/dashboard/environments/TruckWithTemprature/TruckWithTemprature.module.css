@@ -1,0 +1,47 @@
+.truckContainer {
+  padding: 25px 20px;
+  border: 0.5px solid rgb(237 233 233);
+  width: 31.5%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  border-radius: 6px;
+  flex-direction: column;
+}
+.label {
+  font-size: 10px;
+  position: absolute;
+  top: 50%;
+  left: 20%;
+}
+.truckName {
+  font-size: 14px;
+  color: #17191c;
+  font-weight: 600;
+  text-decoration: underline;
+}
+.mapIcon{
+  width: 10px;
+  fill: #008000;
+  margin-right: 4px;
+}
+.address {
+  display: flex;
+  margin-top: 10px;
+}
+
+.wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding-right: 30px;
+  justify-content: center;
+}
+
+@media screen and (max-width: 1124px) {
+  .truckContainer {
+    width: auto;
+    flex: 0 0 250px;
+    max-width: 250px;
+  }
+}

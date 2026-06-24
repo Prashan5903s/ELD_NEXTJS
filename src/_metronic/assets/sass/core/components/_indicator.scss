@@ -1,0 +1,19 @@
+//
+// Indicator
+//
+
+.indicator-progress {
+    display: none;
+
+    [data-kt-indicator="on"] > & {
+        display: inline-block;
+    }
+}
+.indicator-progress{
+    color: '#fff';
+}
+.indicator-label {
+    [data-kt-indicator="on"] > & {
+        display: none;
+    }
+}

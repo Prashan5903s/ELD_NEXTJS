@@ -1,0 +1,204 @@
+.daily-logs-intro-table {
+  border: 1px solid black;
+  padding: 4px;
+  display: flex;
+  max-width: 800px;
+  font-size: 12px !important;
+  flex-direction: column;
+}
+
+.row-wrapper {
+  display: flex;
+  justify-content: space-between;
+  width: 800px;
+}
+
+.bold-text {
+  font-weight: bold;
+}
+
+.details-table {
+  border: 1px solid #dadade !important;
+}
+
+.details-table tbody tr {
+  border: 1px solid #dadade !important;
+}
+
+.driver-details-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 2px solid #171717;
+}
+
+.driver-details-table tbody tr {
+  border-bottom: 2px solid #171717 !important;
+}
+
+.driver-details-table th,
+.driver-details-table td {
+  padding: 5px;
+  text-align: left;
+}
+
+.driver-details-table th {
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.driver-details-table td {
+  white-space: nowrap;
+  font-size: 14px;
+  color: black;
+}
+
+.driver-details-table th:last-child,
+.driver-details-table td:last-child {
+  width: auto;
+}
+
+.log-container {
+  width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  margin-bottom: 20px;
+  text-align: center;
+  color: #333;
+}
+
+/* Logo */
+.logo {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 15px;
+}
+
+/* Highlighted text */
+.highlight {
+  font-weight: bold;
+  color: #333;
+}
+
+/* Table Styles */
+.details-table {
+  width: 100%;
+  margin: 40px 0 25px 0;
+  border-collapse: collapse;
+}
+
+.details-table td {
+  padding: 8px;
+  text-align: left;
+  font-size: 14px;
+}
+
+.details-table .blue-text {
+  color: #1a73e8;
+  font-weight: bold;
+}
+
+/* Footer */
+.footer .platform-text {
+  font-size: 18px;
+  color: #1a73e8;
+  margin-bottom: 10px;
+}
+
+.footer .description-text {
+  font-size: 14px;
+  color: #777;
+}
+
+.log-table-container {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 56px;
+}
+
+.log-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: center;
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: collapse;
+  border: 2px solid #171717;
+}
+
+.log-table tbody tr {
+  border-bottom: 2px solid #171717 !important;
+}
+
+.log-table thead tr {
+  border-bottom: 2px solid #171717 !important;
+}
+
+.log-table th,
+.log-table td {
+  padding: inherit !important;
+  font-size: 14px;
+}
+
+.log-table th {
+  font-weight: bold;
+}
+
+.sub-status {
+  display: block;
+  font-size: 12px;
+  color: gray;
+}
+
+.driver-logs-details {
+  margin: 0 2px;
+}
+
+.driver-logs-container {
+  margin-top: 40px;
+}
+
+.driver-logs-container table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: center;
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: collapse;
+  border: 2px solid #171717;
+}
+
+.driver-logs-container tbody tr {
+  border-bottom: 2px solid #171717 !important;
+}
+
+.driver-logs-container thead tr {
+  border-bottom: 2px solid #171717 !important;
+}
+
+.driver-logs-container thead {
+  border-bottom: 2px solid #171717 !important;
+}
+
+.driver-logs-container table tbody tr th td {
+  padding: inherit !important;
+}
+
+.tr-row td {
+  padding: 0px !important;
+}
+
+.tr-row th {
+  padding: 0px !important;
+}
+
+.driver-signature{
+  margin-top: 26px;
+}
+
+.driver-signature .hr {
+  height: 1.5px;
+  background-color: black;
+  width: 180px;
+  margin: 0px auto;
+  margin-top: 6px;
+}

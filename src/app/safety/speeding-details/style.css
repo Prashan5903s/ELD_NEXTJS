@@ -1,0 +1,232 @@
+.speeding-details-container {
+  display: flex;
+  gap: 20px;
+  /* flex-direction: row-reverse; */
+}
+
+.map-section-left {
+  width: 75%;
+}
+
+.speeding-details-right {
+  width: 25%;
+}
+
+.event-details-container {
+  display: flex;
+  gap: 30px;
+}
+.event-details-left-section {
+  width: 75%;
+}
+
+.event-details-right-section {
+  width: 25%;
+  padding: 20px;
+  /* border-left: 1px solid #ebe4ee; */
+}
+.event-image img {
+  max-width: 100%;
+}
+.event-image div {
+  color: white;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.event-happening-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-radius: 4px;
+}
+.event-happening-details-left {
+  border: 1px solid #ebe4ee;
+  padding: 15px;
+  border-right: 0;
+  padding-bottom: 5px;
+}
+
+.sent-to-driver {
+  border-radius: 4px;
+  background-color: #f2f2f2;
+  padding: 15px;
+}
+
+.event-details-right-section {
+  padding: 16px;
+  padding-top: 0;
+  font-family: Arial, sans-serif;
+}
+
+.event-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #f5f5f5;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.event-status {
+  font-weight: bold;
+  color: #555;
+}
+
+.event-time {
+  color: #999;
+  font-size: 12px;
+}
+
+.settings-icon {
+  color: #888;
+}
+
+.event-section {
+  margin-top: 16px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.event-row {
+  display: flex;
+  flex-direction: column;
+
+  margin-bottom: 12px;
+}
+
+.event-label {
+  font-weight: bold;
+  color: #555;
+  flex: 1;
+  padding-left: 0;
+  padding-bottom: 0;
+}
+
+.event-row p {
+  margin: 0;
+}
+
+.severity-select,
+.unsafe-behaviors-select {
+  display: flex;
+  align-items: center;
+}
+
+.severity-dropdown,
+.behaviors-dropdown {
+  border: 1px solid #e0e0e0;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.why-link {
+  margin-left: 8px;
+  color: #0073e6;
+  font-size: 12px;
+  text-decoration: underline;
+}
+
+.driver-name {
+  color: red;
+}
+
+.driver-id {
+  color: #999;
+  font-size: 12px;
+}
+
+.vehicle-link {
+  color: #0073e6;
+  text-decoration: none;
+  display: block;
+}
+
+.vehicle-model {
+  font-size: 14px;
+  color: #555;
+}
+
+.location {
+  color: #555;
+}
+
+.notes-section {
+  margin-top: 30px;
+}
+
+.notes-textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  resize: none;
+  font-family: Arial, sans-serif;
+}
+
+.save-note {
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
+}
+
+.visible-checkbox {
+  display: flex;
+  align-items: center;
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.markers-colors-info {
+  margin-top: 14px;
+  position: absolute;
+  text-align: center;
+  width: 42px;
+  z-index: 2;
+  right: 10px;
+  top: 10%;
+  padding: 6px 0px;
+  background: white;
+  border-radius: 4px;
+}
+
+@media (max-width: 1024px) {
+  .event-details-container {
+    flex-direction: column;
+  }
+  .event-details-left-section {
+    width: 100%;
+  }
+  .event-details-right-section {
+    width: 100%;
+  }
+  .map-section-left {
+    width: 100%;
+    margin-bottom: 30px;
+    height: 560px;
+  }
+  .speeding-details-container {
+    flex-direction: column;
+  }
+
+  .speeding-details-right {
+    width: 100%;
+  }
+  .speeding-details-section {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 800px) {
+  .event-happening-details {
+    display: flex;
+    flex-direction: column;
+  }
+}

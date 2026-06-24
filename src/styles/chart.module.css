@@ -1,0 +1,77 @@
+.apexChartmain {
+  width: 100%;
+  height: 100%;
+  margin-top: 0px;
+  padding-top: 0px;
+}
+
+.apexCharts text tspan {
+  display: none !important;
+}
+
+.container1 {
+  padding-top: 0px;
+}
+
+.apexCharts {
+  margin-top: 0px;
+  padding-top: 0px;
+}
+
+.foregroundHead {
+  position: absolute;
+  width: 100%;
+  top: 15%;
+  left: 1.5%;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 0px;
+}
+
+.foregroundDiv {
+  width: calc(100% - 42px);
+  height: 80%;
+  position: absolute;
+  top: 21%;
+  left: 33px;
+  z-index: 3;
+  background-color: transparent;
+  pointer-events: none;
+}
+
+.foregroundDiv table {
+  width: 100%;
+  height: 90%;
+}
+
+.foregroundDiv table tr:nth-child(1) {
+  height: 1.1%;
+}
+
+.foregroundDiv table tr:nth-child(2) {
+  height: 1%;
+}
+
+.foregroundDiv table tr:nth-child(3) {
+  height: 1%;
+}
+
+.foregroundDiv table tr:nth-child(4) {
+  height: 1%;
+}
+
+.myTable :global(.table:not(.table-bordered) tfoot tr:last-child th),
+.myTable :global(.table:not(.table-bordered) tfoot tr:last-child td),
+.myTable :global(.table:not(.table-bordered) tbody tr:last-child th),
+.myTable :global(.table:not(.table-bordered) tbody tr:last-child td) {
+  border-bottom: 1px solid red !important;
+}
+
+/* Ensure that the .foregroundDiv is transparent but doesn't block interaction with the background */
+.backgroundDiv {
+  z-index: 1;
+  pointer-events: auto;
+  /* Background div should allow interactions */
+  padding-top: 0px;
+}

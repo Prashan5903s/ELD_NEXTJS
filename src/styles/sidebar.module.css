@@ -1,0 +1,114 @@
+/* components/Sidebar.module.css */
+.sidebar {
+  width: 250px;
+  padding: 4px;
+  height: calc(94vh - 78px);
+  overflow: auto;
+  list-style: none;
+  margin: 12px;
+}
+.collapsed{
+  width: 65px !important;    
+  overflow: hidden !important;
+  
+}
+
+
+.collapsed .menuItem .active {
+  transition: color 0.2s ease !important;
+  background-color: white !important;
+  color: #1b84ff !important;
+  border-radius: 10px  !important;
+  margin-right: -4px !important;
+  box-shadow: 0px 3px 4px 0px rgba(0, 0, 0, 0.03) !important;
+}
+
+.menuItem {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  padding-right: 1px;
+  padding-left: 10px;
+}
+.menuItem span {
+  color: #4b5675;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.menuItem i {
+  color: #99a1b7;
+}
+.subMenu {
+  margin-bottom: 0;
+  padding-left: 6px;
+  overflow: hidden;
+  transition: max-height 0.5s ease-out, opacity 0.5s ease-out;
+  max-height: 0;
+}
+
+.subMenu.open {
+  max-height: 500px;
+  opacity: 1;
+}
+.subMenu .menuTitle.Link.active {
+  background-color: white;
+  color: #1b84ff;
+}
+.menuTitle {
+  padding: 0.7rem 1rem;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  column-gap: 8px;
+  color: #4b5675;
+  transition: color 0.5s ease-out, opacity 0.5s ease-out;
+}
+.menuTitle:hover span,
+.active span,
+.menuTitle:hover i,
+.active i {
+  color: #1b84ff;
+  cursor: pointer;
+}
+.menuItem .active {
+  transition: color 0.2s ease;
+  background-color: white;
+  color: #1b84ff;
+  border-radius: 10px;
+  margin-right: 4px !important;
+  box-shadow: 0px 3px 4px 0px rgba(0, 0, 0, 0.03) !important;
+}
+
+.subMenu .menuItem .active {
+  transition: color 0.2s ease;
+  background-color: white;
+  color: #1b84ff;
+  border-radius: 10px;
+  margin-right: 17px !important;
+  box-shadow: 0px 3px 4px 0px rgba(0, 0, 0, 0.03) !important;
+}
+
+.subMenu .menuTitle {
+  position: relative;
+  column-gap: 13px !important;
+}
+.subMenu .menuTitle::before {
+  content: "";
+  width: 4px;
+  height: 4px;
+  background-color: #c4cada;
+  border-radius: 50px;
+  margin-left: 10px;
+  display: inline-block;    
+  transition: background-color 0.3s;
+}
+.subMenu .menuTitle:hover::before {
+  background-color: #5d84f0 !important;
+}
+.subMenu .menuTitle.active::before {
+  background-color: #5d84f0 !important;
+}
+
+.hiddenDisplay {
+  display: none;
+}
