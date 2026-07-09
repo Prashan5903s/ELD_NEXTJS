@@ -215,6 +215,8 @@ function LineChart (params = null) {
       entry.time = diff
     })
 
+    console.log('timeMapData', timeMapData)
+
     return calculateTime(timeMapData)
   }
 
