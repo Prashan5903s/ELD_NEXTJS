@@ -7,6 +7,16 @@ import { calculateTimeDifference, parseTime, processTimeData } from './utils'
 
 const LazyChart = lazy(() => import('./Chart'))
 
+const normalizeTime = time => {
+  if (!time) return '00:00:00'
+
+  if (time.split(':').length === 2) {
+    return `${time}:00`
+  }
+
+  return time
+}
+
 function LineChart (params = null) {
   const [val, setVal] = useState<any>([])
 
@@ -201,8 +211,8 @@ function LineChart (params = null) {
             // Return the object with the computed status
             return {
               status: mapI,
-              stime: item[3],
-              etime: item[4],
+              stime: normalizeTime(item[3]),
+              etime: normalizeTime(item[4]),
               time: '',
               truckDetails: truckDetailItem ? [truckDetailItem] : []
             }
