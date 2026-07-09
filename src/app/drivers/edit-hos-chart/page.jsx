@@ -1,7 +1,5 @@
 'use client'
 
-import EditHOSChart from '../../../Components/EditGraphComponent/Linechart'
-
 const apiData = {
   '2026-06-15': [
     [[7408, 1, 'Off duty', '00:00', '23:59', 'A02']],
@@ -21,15 +19,7 @@ const apiData = {
 }
 
 export default function EditHosChart () {
-  const handleSegmentsChange = segments => {
-    console.log(segments)
-  }
+  const handleSegmentsChange = segments => {}
 
-  return (
-    <EditHOSChart
-      params={apiData['2026-06-15']}
-      editable={true}
-      onSegmentsChange={handleSegmentsChange}
-    />
-  )
+  return <></>
 }

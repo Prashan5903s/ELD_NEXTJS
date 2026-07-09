@@ -33,6 +33,6 @@
     "src/app/dashboard/vehiclesasasa/page.ssx",
     "src/app/dashboard/vehiclesasasa/page.jsx",
     "src/app/validation/EC/page.jsx"
-, "src/Components/driveractivity/activityForm.tsx", "src/app/Shadow/page.jsx", "src/Components/reports/page.jsx", "src/Components/reports/components/events-table.jsx", "src/Components/reports/components/events-filters.jsx", "src/Components/reports/layout.jsx", "src/app/dashboard/alert/alertForm/AddalertPopup.jsx", "src/driverComponent/fleetUser/page.jsx", "src/driverComponent/chatBox.jsx"  ],
+, "src/Components/driveractivity/activityForm.tsx", "src/app/Shadow/page.jsx", "src/Components/reports/page.jsx", "src/Components/reports/components/events-table.jsx", "src/Components/reports/components/events-filters.jsx", "src/Components/reports/layout.jsx", "src/app/dashboard/alert/alertForm/AddalertPopup.jsx", "src/driverComponent/fleetUser/page.jsx", "src/driverComponent/chatBox.jsx", "src/Components/GraphComponents/LineChart.jsx"  ],
   "exclude": ["node_modules"]
 }

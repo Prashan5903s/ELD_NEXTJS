@@ -1,20 +1,21 @@
 export const getClosestTime = (data, targetTime, status) => {
-  function timeToMinutes (timeStr) {
-    if (!timeStr) return 0 // handle null or undefined input
-    const [hours = 0, minutes = 0] = timeStr.split(':').map(Number)
-    return hours * 60 + minutes
+  function timeToSeconds (timeStr) {
+    if (!timeStr) return 0
+    const [hours = 0, minutes = 0, seconds = 0] = timeStr.split(':').map(Number)
+
+    return hours * 3600 + minutes * 60 + seconds
   }
 
-  const targetInMinutes = timeToMinutes(targetTime)
+  const targetInSeconds = timeToSeconds(targetTime)
 
   let closestObject = null
   let closestIndex = -1
 
   data.forEach((item, index) => {
-    const stimeInMinutes = timeToMinutes(item.stime)
-    const etimeInMinutes = timeToMinutes(item.etime)
+    const stimeInSeconds = timeToSeconds(item.stime)
+    const etimeInSeconds = timeToSeconds(item.etime)
 
-    if (stimeInMinutes <= targetInMinutes && targetInMinutes < etimeInMinutes) {
+    if (stimeInSeconds <= targetInSeconds && targetInSeconds < etimeInSeconds) {
       closestObject = item
       closestIndex = index
     }
@@ -44,102 +45,132 @@ export const getClosestTime = (data, targetTime, status) => {
 }
 
 export const parseTime = time => {
-  const [hours, minutes] = time.split(':').map(Number)
-  return hours * 60 + minutes // Return the time in minutes
+  const [hours = 0, minutes = 0, seconds = 0] = time.split(':').map(Number)
+
+  return hours * 3600 + minutes * 60 + seconds
 }
 
-export const formatTimeM = minutes => {
-  const hours = Math.floor(minutes / 60)
-  const mins = minutes % 60
-  return `${hours}:${mins.toString().padStart(2, '0')}`
+const parseTimeDiffrence = time => {
+  const [h, m, s] = time.split(':').map(Number)
+  return h * 3600 + m * 60 + s
 }
 
-export const calculateTimeDifference = (stime, etime) => {
-  const start = parseTime(stime)
-  const end = parseTime(etime)
-  const difference = end - start
-  return formatTimeM(difference)
-}
+export const formatTimeM = totalSeconds => {
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
 
-export const roundUpTimeToNext15 = (time: string): string => {
-  const [hours, minutes] = time.split(':').map(Number)
-
-  // Round the minutes to the next 15 minute mark
-  const roundedMinutes = Math.ceil(minutes / 15) * 15
-
-  // If minutes >= 60, adjust the hours
-  const newHours = roundedMinutes === 60 ? hours + 1 : hours
-  const newMinutes = roundedMinutes === 60 ? 0 : roundedMinutes
-
-  // Adjust for 24-hour format if needed
-  const adjustedHours = newHours >= 24 ? 23 : newHours
-  const adjustedMinutes = newHours >= 24 ? 59 : newMinutes
-
-  // Return the formatted time in "HH:MM" format
-  return `${adjustedHours.toString().padStart(2, '0')}:${adjustedMinutes
+  return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds
     .toString()
     .padStart(2, '0')}`
 }
 
+const formatTime = seconds => {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = seconds % 60
+
+  return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
+export const calculateTimeDifference = (stime, etime) => {
+  const start = parseTimeDiffrence(stime)
+  const end = parseTimeDiffrence(etime)
+
+  let difference = end - start
+
+  if (difference < 0) {
+    difference += 24 * 60 * 60
+  }
+
+  return formatTime(difference)
+}
+
+export const roundUpTimeToNext15 = (time: string): string => {
+  let [hours = 0, minutes = 0, seconds = 0] = time.split(':').map(Number)
+
+  // If seconds exist, move to the next minute first
+  if (seconds > 0) {
+    minutes += 1
+    seconds = 0
+  }
+
+  // Round minutes up to next 15-minute mark
+  let roundedMinutes = Math.ceil(minutes / 15) * 15
+
+  if (roundedMinutes >= 60) {
+    hours += Math.floor(roundedMinutes / 60)
+    roundedMinutes %= 60
+  }
+
+  if (hours >= 24) {
+    hours = 23
+    roundedMinutes = 59
+    seconds = 59
+  }
+
+  return `${hours.toString().padStart(2, '0')}:${roundedMinutes
+    .toString()
+    .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+}
+
 export const processTimeData = data => {
-  return data.map(item => {
-    // Adjust stime and etime to the nearest 15-minute mark
-    let adjustedStime = roundUpTimeToNext15(item.stime)
-    let adjustedEtime = roundUpTimeToNext15(item.etime)
+  const rounded = data.map(item => ({
+    ...item,
+    stime: roundUpTimeToNext15(item.stime),
+    etime: roundUpTimeToNext15(item.etime)
+  }))
 
-    // Ensure stime and etime are not the same
-    if (adjustedStime === adjustedEtime) {
-      // If they are the same, increment etime by 15 minutes
-      const [hours, minutes] = adjustedEtime.split(':').map(Number)
-      const newTime = new Date()
-      newTime.setHours(hours)
-      newTime.setMinutes(minutes + 15)
+  const result = []
 
-      adjustedEtime = `${newTime
-        .getHours()
-        .toString()
-        .padStart(2, '0')}:${newTime.getMinutes().toString().padStart(2, '0')}`
+  rounded.forEach(item => {
+    const last = result[result.length - 1]
 
-      // Ensure the new etime is still rounded to the nearest 15-minute mark
-      adjustedEtime = roundUpTimeToNext15(adjustedEtime)
+    if (
+      last &&
+      last.status === item.status &&
+      last.stime === item.stime &&
+      last.etime === item.etime
+    ) {
+      return
     }
 
-    return {
+    result.push({
       ...item,
-      stime: adjustedStime,
-      etime: adjustedEtime
-    }
+      time: calculateTimeDifference(item.stime, item.etime)
+    })
   })
+
+  return result
 }
 
 export const calculateTimeDifferenceAndFormat = (stime, etime) => {
-  // Convert a time string (e.g., "08:44") into minutes
-  function timeToMinutes (timeStr) {
-    if (!timeStr) return 0 // handle null or undefined input
-    const [hours = 0, minutes = 0] = timeStr.split(':').map(Number)
-    return hours * 60 + minutes
+  function timeToSeconds (timeStr) {
+    if (!timeStr) return 0
+
+    const [hours = 0, minutes = 0, seconds = 0] = timeStr.split(':').map(Number)
+
+    return hours * 3600 + minutes * 60 + seconds
   }
 
-  // Convert both stime and etime to minutes
-  const stimeInMinutes = timeToMinutes(stime)
-  const etimeInMinutes = timeToMinutes(etime)
+  const stimeInSeconds = timeToSeconds(stime)
+  const etimeInSeconds = timeToSeconds(etime)
 
-  // Calculate the difference in minutes
-  let diffInMinutes = etimeInMinutes - stimeInMinutes
+  let diffInSeconds = etimeInSeconds - stimeInSeconds
 
-  // If etime is after midnight (00:00), handle day wrap-around
-  if (diffInMinutes < 0) {
-    diffInMinutes += 24 * 60 // Add 24 hours worth of minutes
+  if (diffInSeconds < 0) {
+    diffInSeconds += 24 * 3600
   }
 
-  // Convert the difference into hours and minutes
-  const hours = Math.floor(diffInMinutes / 60)
-  const minutes = diffInMinutes % 60
+  const hours = Math.floor(diffInSeconds / 3600)
+  const minutes = Math.floor((diffInSeconds % 3600) / 60)
+  const seconds = diffInSeconds % 60
 
-  // Format the result
-  const hoursPart = hours > 0 ? `${hours}h` : ''
-  const minutesPart = minutes > 0 ? `${minutes}m` : ''
+  const parts = []
 
-  // Join the parts together
-  return `${hoursPart} ${minutesPart}`.trim()
+  if (hours) parts.push(`${hours}h`)
+  if (minutes) parts.push(`${minutes}m`)
+  if (seconds) parts.push(`${seconds}s`)
+
+  return parts.length ? parts.join(' ') : '0s'
 }

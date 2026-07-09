@@ -109,7 +109,6 @@ const ActivityTable = () => {
         if (error.response && error.response.status === 429) {
           setTimeout(() => fetchPermissions(token), 5000) // Retry after 5 seconds
         } else {
-          console.log('Error permission', error)
 
           console.error('Error fetching permissions:', error)
         }
@@ -278,7 +277,6 @@ const ActivityTable = () => {
       return
     }
 
-    console.log('Hello')
 
     try {
       const response = await axios.get(
@@ -443,8 +441,6 @@ const ActivityTable = () => {
         }
 
         const result = await response.json()
-
-        console.log('Result', result)
 
         setDatas(result)
       } catch (err) {

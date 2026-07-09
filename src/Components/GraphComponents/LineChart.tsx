@@ -8,7 +8,7 @@ import { calculateTimeDifference, parseTime, processTimeData } from './utils'
 const LazyChart = lazy(() => import('./Chart'))
 
 function LineChart (params = null) {
-  const [val, setVal] = useState([])
+  const [val, setVal] = useState<any>([])
 
   useEffect(() => {
     setVal(params)
@@ -53,75 +53,74 @@ function LineChart (params = null) {
           let colors = colorNames[index]
 
           const slug = convertToSlug(data.name)
-          const randomColor = generateRandomColorName()
           return {
             [slug]: [{ color: colors, text: data.name }]
           }
         })
       : []
 
-  const rawData =
-    val['params'] && val['params'][0]
-      ? val['params'][0].map(item => {
-          // Initialize mapI
-          let mapI = 0 // Default value
+  const rawData = []
 
-          // Set mapI based on the condition
-          if (item[1] === 1) {
-            mapI = 4
-          } else if (item[1] === 3) {
-            mapI = 2
-          } else if (item[1] === 4) {
-            mapI = 1
-          } else if (item[1] === 2) {
-            mapI = 3
-          } else if (item[1] === 5) {
-            mapI = 4
-          } else if (item[1] === 6) {
-            mapI = 1
-          }
+  if (val?.params?.[0]) {
+    val.params[0].forEach(item => {
+      let mapI = 0
 
-          // Determine truckDetails based on slug
-          const truckDetails = mappedData
-            ? mappedData.find(data => data[convertToSlug(item[5])])
-            : []
+      switch (item[1]) {
+        case 1:
+        case 5:
+          mapI = 4 // OFF
+          break
 
-          // Return the object with the computed status
-          return {
-            status: mapI,
-            stime: item[3],
-            etime: item[4],
-            time: '',
-            truckDetails: [
-              truckDetails && truckDetails[convertToSlug(item[5])][0]
-            ]
-          }
-        })
-      : []
+        case 3:
+          mapI = 2 // Driving
+          break
 
-  let data = rawData
+        case 2:
+          mapI = 3 // SB
+          break
 
-  data = processTimeData(data)
+        case 4:
+        case 6:
+          mapI = 1 // ON
+          break
+      }
 
-  data.push({
-    status: null,
-    stime: '00:00',
-    etime: '00:0',
-    time: '00:00',
-    truckDetails: [{}]
-  })
+      const truckDetails = mappedData
+        ? mappedData.find(data => data[convertToSlug(item[5])])
+        : null
 
-  data.forEach(entry => {
-    entry.time = calculateTimeDifference(entry.stime, entry.etime)
-  })
+      const newItem = {
+        status: mapI,
+        stime: item[3],
+        etime: item[4],
+        time: '',
+        truckDetails: [truckDetails?.[convertToSlug(item[5])]?.[0]]
+      }
 
-  const filteredData = data.filter(
-    item => item.status === 1 || item.status === 2
-  )
+      const existing = rawData.find(
+        r => r.stime === newItem.stime && r.etime === newItem.etime
+      )
+
+      if (!existing) {
+        rawData.push(newItem)
+      } else {
+        // Choose which status should win if duplicate intervals exist.
+        // Example: keep Driving over OFF.
+        if (newItem.status === 2) {
+          existing.status = 2
+        }
+      }
+    })
+  }
+
+  let data = rawData.map(item => ({
+    ...item,
+    time: calculateTimeDifference(item.stime, item.etime)
+  }))
 
   const colorLineData = []
 
-  filteredData.forEach(entry => {
+  data.forEach(entry => {
     const stime = entry.stime
     const etime = entry.etime
     const status = entry.status
@@ -211,7 +210,9 @@ function LineChart (params = null) {
         : []
 
     timeMapData.forEach(entry => {
-      entry.time = calculateTimeDifference(entry.stime, entry.etime)
+      const diff = calculateTimeDifference(entry.stime, entry.etime)
+
+      entry.time = diff
     })
 
     return calculateTime(timeMapData)
@@ -231,8 +232,6 @@ function LineChart (params = null) {
           container.classList.remove(styles.smallWidth)
         }
       }
-      const width = container.offsetWidth
-      const height = container.offsetHeight
 
       checkWidth()
 
@@ -413,56 +412,56 @@ function LineChart (params = null) {
     </div>
   )
 }
+
 const processedRawData = (data, transformedData, colorLineData) => {
-  const result = []
-  data.forEach(item => {
-    const status = item.status
-    const timeParts = item.time.split(':')
-    const hours = parseInt(timeParts[0], 10)
-    const minutes = parseInt(timeParts[1], 10).toFixed(2)
-    const totalTime = hours + '.' + minutes
-    parseFloat(totalTime).toFixed(2)
-    const singleTruckDetails = item.truckDetails
-    //truck map
-    const truckDetails = []
-    truckDetails.push(transformedData)
-    const colorLine = []
-    colorLine.push(colorLineData)
-    result.push({
+  return data.map(item => {
+    const [hours = 0, minutes = 0, seconds = 0] = item.time
+      .split(':')
+      .map(Number)
+
+    const totalTime = Number(hours + minutes / 60 + seconds / 3600)
+
+    return {
       totalTime,
-      status,
-      singleTruckDetails,
-      truckDetails,
+      status: item.status,
+      singleTruckDetails: item.truckDetails,
+      truckDetails: [transformedData],
       colorLineData
-    })
+    }
   })
-  return result
 }
 
 //Time Calculations on the Right
 function calculateTime (data) {
   const timeMap = {
-    1: 0, // Total time for status 1
-    2: 0, // Total time for status 2
-    3: 0, // Total time for status 3
-    4: 0 // Total time for status 4
+    1: 0,
+    2: 0,
+    3: 0,
+    4: 0
   }
 
-  data.forEach(entry => {
-    const { status, time } = entry
-    const [hours, minutes] = time.split(':').map(Number)
-    const totalMinutes = hours * 60 + minutes
+  data.forEach(({ status, time }) => {
+    const [hours, minutes, seconds] = time.split(':').map(Number)
+
+    const totalSeconds = hours * 3600 + minutes * 60 + seconds
+
     if (timeMap[status] !== undefined) {
-      timeMap[status] += parseFloat(totalMinutes)
+      timeMap[status] += totalSeconds
     }
   })
-  // Convert total minutes back to hours and minutes format
+
   Object.keys(timeMap).forEach(status => {
-    const totalMinutes = timeMap[status]
-    const hours = Math.floor(totalMinutes / 60)
-    const minutes = totalMinutes % 60
-    timeMap[status] = `${hours}:${minutes.toString().padStart(2, '0')}:00`
+    const totalSeconds = timeMap[status]
+
+    const hours = Math.floor(totalSeconds / 3600)
+    const minutes = Math.floor((totalSeconds % 3600) / 60)
+    const seconds = totalSeconds % 60
+
+    timeMap[status] = `${String(hours).padStart(2, '0')}:${String(
+      minutes
+    ).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
   })
+
   return timeMap
 }
 function calculateTotalTime (timeMap) {

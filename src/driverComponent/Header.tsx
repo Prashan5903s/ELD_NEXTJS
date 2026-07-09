@@ -63,8 +63,6 @@ function Header({ toggle }: { toggle?: any }) {
 
         if (event?.type === "LOGOUT") {
 
-          console.log("🚨 Force logout received", event);
-
           echoInstance.disconnect();
 
           signOut({ callbackUrl: "/" });
@@ -91,8 +89,6 @@ function Header({ toggle }: { toggle?: any }) {
         });
 
         const data = await response.json()
-
-        console.log("Data notify", data);
 
         if (!response.ok) {
           throw new Error("Network response was not ok");

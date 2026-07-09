@@ -45,8 +45,6 @@ const Sidebar = ({
 
   const token = session && session.user && session?.user?.token
 
-  console.log('Token', token)
-
   useEffect(() => {
     if (permissn) {
       setLoad(true)

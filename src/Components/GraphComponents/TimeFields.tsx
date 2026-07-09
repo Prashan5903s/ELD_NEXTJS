@@ -6,7 +6,7 @@ const TimeFields = ({ timeMap }) => {
     <div style={{ flex: '1', display: 'flex', justifyContent: 'left', alignItems: 'flex-end', paddingBottom: '28px' }}>
       <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-around', height: '75%', borderBottomWidth: '2px', borderBottomColor: '#D3D3D3', borderBottomStyle: 'solid' }}>
         <div style={{ display: 'flex', justifyContent: 'left', alignItems: 'flex-end', paddingBottom: '10px' }}>
-          <p style={{ margin: '0', textAlign: 'left' }}>{ timeMap[4] }</p>
+          <p style={{ margin: '0', textAlign: 'left' }}>{ timeMap[4] }</p> 
         </div>
         <div style={{ display: 'flex', justifyContent: 'left', alignItems: 'flex-end', paddingBottom: '10px' }}>
           <p style={{ margin: '0', textAlign: 'left' }}>{ timeMap[3] }</p>

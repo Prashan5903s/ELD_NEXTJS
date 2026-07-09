@@ -40,8 +40,6 @@ const VehicleTable = () => {
 
   const token = session && session.user && session?.user?.token;
 
-  console.log("Token", token)
-
   const fetchPermissions = useCallback(
     debounce(async (token) => {
       try {

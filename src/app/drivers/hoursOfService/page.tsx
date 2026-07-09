@@ -310,8 +310,6 @@ export default function HoursOfService ({ params }) {
           }
         }
 
-        console.log({ [date]: result })
-
         // Use functional update to avoid overwriting existing data
         setGraphData(prev => ({ ...prev, [date]: result }))
       } catch (err) {
@@ -495,8 +493,6 @@ export default function HoursOfService ({ params }) {
           const dateKey = Object.keys(logEntry)[0]
           const entryData = logEntry[dateKey][0]
           const entryDatas = logEntry[dateKey]
-          const startLoc = logEntry[dateKey][3]
-          const endLoc = logEntry[dateKey][4]
           var dataEntry = logEntry[dateKey][2]
 
           function convertTo24HourFormat (time12h) {
