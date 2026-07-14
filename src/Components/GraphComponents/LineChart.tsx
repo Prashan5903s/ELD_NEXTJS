@@ -134,7 +134,7 @@ function LineChart (params = null) {
     const stime = entry.stime
     const etime = entry.etime
     const status = entry.status
-    const color = entry.truckDetails[0].color
+    const color = entry.truckDetails?.[0]?.color
     colorLineData.push({
       stime: stime,
       etime: etime,
@@ -184,8 +184,8 @@ function LineChart (params = null) {
 
   const timeMap = () => {
     let timeMapData =
-      val['params'] && val['params'][0]
-        ? val['params'][0].map(item => {
+      val?.['params'] && val?.['params']?.[0]
+        ? val?.['params']?.[0]?.map(item => {
             // Initialize mapI
             let mapI = 0 // Default value
 
@@ -201,18 +201,18 @@ function LineChart (params = null) {
             }
 
             // Determine truckDetails based on slug
-            const slug = convertToSlug(item[5])
-            const truckDetails = mappedData?.find(data => data[slug]) || null
+            const slug = convertToSlug(item?.[5])
+            const truckDetails = mappedData?.find(data => data?.[slug]) || null
 
             // Ensure truckDetails exists and has data before accessing
             const truckDetailItem =
-              truckDetails && truckDetails[slug] ? truckDetails[slug][0] : null
+              truckDetails && truckDetails?.[slug] ? truckDetails?.[slug]?.[0] : null
 
             // Return the object with the computed status
             return {
               status: mapI,
-              stime: normalizeTime(item[3]),
-              etime: normalizeTime(item[4]),
+              stime: normalizeTime(item?.[3]),
+              etime: normalizeTime(item?.[4]),
               time: '',
               truckDetails: truckDetailItem ? [truckDetailItem] : []
             }
@@ -224,8 +224,6 @@ function LineChart (params = null) {
 
       entry.time = diff
     })
-
-    console.log('timeMapData', timeMapData)
 
     return calculateTime(timeMapData)
   }
