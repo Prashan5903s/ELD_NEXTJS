@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+
 import "../_metronic/assets/sass/style.scss";
 import "../_metronic/assets/fonticon/fonticon.css";
 import "../_metronic/assets/keenicons/duotone/style.css";
 import "../_metronic/assets/keenicons/outline/style.css";
 import "../styles/global.css";
+
 import SessionProviderWrapper from "./SessionProviderWrapper";
 
 const inter = Inter({ subsets: ["latin"] });
