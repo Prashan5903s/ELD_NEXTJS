@@ -49,6 +49,9 @@ function Header({ toggle }: { toggle?: any }) {
   const userId = session && session.user && session?.user?.id;
   const accessToken = session && session.user && session?.user?.token;
 
+
+  //Force logout
+
   useEffect(() => {
 
     if (!userId || !accessToken) return;
