@@ -29,7 +29,7 @@ function Header ({ toggle }: { toggle?: any }) {
   const [notifications, setNotifications] = useState([])
   const [error, setError] = useState(null)
   const notificationRef = useRef(null)
-  const [echo, setEcho] = useState(null)
+  const socketRef = useRef<WebSocket | null>(null)
 
   const assertUrl = process.env.NEXT_PUBLIC_ASSERT_URL
 
@@ -50,73 +50,212 @@ function Header ({ toggle }: { toggle?: any }) {
   const accessToken = session && session.user && session?.user?.token
 
   useEffect(() => {
-    if (!userId || !accessToken) return
 
-    const socket = initEcho(accessToken, Number(userId))
+    if (!accessToken) {
+      console.log('Waiting for access token...')
+      return
+    }
 
-    socket.onmessage = async (message: MessageEvent) => {
-      try {
-        const event = JSON.parse(message.data)
+    const token = String(accessToken).trim()
 
-        console.log('WebSocket event received:', event)
+    if (!token) {
+      console.error(' Empty access token')
+      return
+    }
+
+    let socket: WebSocket | null = null
+    let isUnmounted = false
+
+    console.log('Initializing authenticated WebSocket', {
+      tokenExists: Boolean(token),
+      tokenLength: token.length,
+      tokenStart: token.substring(0, 20)
+    })
+
+    try {
+      socket = initEcho(token)
+
+      socketRef.current = socket
+
+      const handleMessage = async (message: MessageEvent) => {
+        try {
+          const event = JSON.parse(message.data)
+
+          console.log('📨 WebSocket event received:', event)
+
+          // =========================================
+          // AUTH SUCCESS
+          // =========================================
+
+          if (event?.sendType === 'auth_success') {
+            console.log('✅ WebSocket authentication successful')
+
+            return
+          }
+
+          // =========================================
+          // AUTH FAILED
+          // =========================================
+
+          if (event?.sendType === 'auth_failed') {
+            console.error(' WebSocket authentication failed:', event?.message)
+
+            // Do NOT logout immediately.
+            // First fix token validation on backend.
+
+            return
+          }
+
+          // =========================================
+          // AUTH REQUIRED
+          // =========================================
+
+          if (event?.sendType === 'auth_required') {
+            console.error(' WebSocket authentication required')
+
+            return
+          }
+
+          // =========================================
+          // AUTH EXPIRED
+          // =========================================
+
+          if (event?.sendType === 'auth_expired') {
+            console.error(' WebSocket session expired')
+
+            if (!isUnmounted) {
+              await signOut({
+                redirect: false
+              })
+
+              window.location.reload()
+            }
+
+            return
+          }
+
+          // =========================================
+          // AUTH MISMATCH
+          // =========================================
+
+          if (event?.sendType === 'auth_mismatch') {
+            console.error(' WebSocket authentication mismatch')
+
+            if (!isUnmounted) {
+              await signOut({
+                redirect: false
+              })
+
+              window.location.reload()
+            }
+
+            return
+          }
+
+          // =========================================
+          // FORCE LOGOUT
+          // =========================================
+
+          if (
+            event?.sendType === 'user-force-logout' &&
+            Number(event?.driverId) === Number(userId)
+          ) {
+            console.log('🚪 Force logout received')
+
+            if (!isUnmounted) {
+              await signOut({
+                callbackUrl: '/'
+              })
+            }
+
+            return
+          }
+
+          // =========================================
+          // DUTY STATUS
+          // =========================================
+
+          if (event?.sendType === 'change-duty-status') {
+            console.log('🚗 Duty status updated:', event)
+
+            return
+          }
+
+          // =========================================
+          // NEW MESSAGE
+          // =========================================
+
+          if (event?.sendType === 'new_message') {
+            console.log('💬 New chat message:', event)
+
+            return
+          }
+
+          // =========================================
+          // MESSAGE READ STATUS
+          // =========================================
+
+          if (event?.sendType === 'message_read_status') {
+            console.log('👁️ Message read status:', event)
+
+            return
+          }
+
+          console.log('ℹ️ Unhandled WebSocket event:', event?.sendType)
+        } catch (error) {
+          console.error(' WebSocket message parsing error:', error)
+        }
+      }
+
+      const handleOpen = () => {
+        console.log('🟢 WebSocket is open')
+      }
+
+      const handleClose = (event: CloseEvent) => {
+        console.log('🔴 WebSocket closed:', {
+          code: event.code,
+          reason: event.reason
+        })
+      }
+
+      const handleError = (event: Event) => {
+        console.error(' WebSocket error:', event)
+      }
+
+      socket.addEventListener('message', handleMessage)
+      socket.addEventListener('open', handleOpen)
+      socket.addEventListener('close', handleClose)
+      socket.addEventListener('error', handleError)
+
+      return () => {
+        isUnmounted = true
+
+        console.log('🧹 Cleaning up WebSocket')
+
+        socket?.removeEventListener('message', handleMessage)
+
+        socket?.removeEventListener('open', handleOpen)
+
+        socket?.removeEventListener('close', handleClose)
+
+        socket?.removeEventListener('error', handleError)
 
         if (
-          event?.sendType === 'user-force-logout' &&
-          Number(event?.driverId) === Number(userId)
+          socket &&
+          (socket.readyState === WebSocket.OPEN ||
+            socket.readyState === WebSocket.CONNECTING)
         ) {
-          console.log('Force logout received')
-
-          socket.close()
-
-          await signOut({
-            callbackUrl: '/'
-          })
-        }
-      } catch (error) {
-        console.error('WebSocket message parsing error:', error)
-      }
-    }
-
-    return () => {
-      socket.close()
-    }
-  }, [userId, accessToken])
-
-  const fetchNotifyData = useCallback(
-    debounce(async () => {
-      setIsDataLoading(true)
-      try {
-        const response = await fetch(`${url}/user/notify/vehicle`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${accessToken}`
-          }
-        })
-
-        const data = await response.json()
-
-        console.log('Data notify', data)
-
-        if (!response.ok) {
-          throw new Error('Network response was not ok')
+          socket.close(1000, 'Component cleanup')
         }
 
-        const results = await response.json()
-        setNotifications(results)
-      } catch (err: any) {
-        setIsDataLoading(false)
-        setError(err.message)
+        if (socketRef.current === socket) {
+          socketRef.current = null
+        }
       }
-    }, 1000),
-    [accessToken, url, setIsLoading]
-  )
-
-  // useEffect(() => {
-  //   if (accessToken) {
-  //     fetchNotifyData();
-  //   }
-  // }, [fetchNotifyData, accessToken]);
+    } catch (error) {
+      console.error(' Failed to initialize WebSocket:', error)
+    }
+  }, [accessToken, userId])
 
   const LogOutData = useCallback(
     debounce(async () => {
