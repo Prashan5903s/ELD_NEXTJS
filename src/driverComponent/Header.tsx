@@ -52,7 +52,7 @@ function Header ({ toggle }: { toggle?: any }) {
   useEffect(() => {
 
     if (!accessToken) {
-      console.log('Waiting for access token...')
+
       return
     }
 
@@ -66,12 +66,6 @@ function Header ({ toggle }: { toggle?: any }) {
     let socket: WebSocket | null = null
     let isUnmounted = false
 
-    console.log('Initializing authenticated WebSocket', {
-      tokenExists: Boolean(token),
-      tokenLength: token.length,
-      tokenStart: token.substring(0, 20)
-    })
-
     try {
       socket = initEcho(token)
 
@@ -81,14 +75,11 @@ function Header ({ toggle }: { toggle?: any }) {
         try {
           const event = JSON.parse(message.data)
 
-          console.log('📨 WebSocket event received:', event)
-
           // =========================================
           // AUTH SUCCESS
           // =========================================
 
           if (event?.sendType === 'auth_success') {
-            console.log('✅ WebSocket authentication successful')
 
             return
           }
@@ -160,7 +151,6 @@ function Header ({ toggle }: { toggle?: any }) {
             event?.sendType === 'user-force-logout' &&
             Number(event?.driverId) === Number(userId)
           ) {
-            console.log('🚪 Force logout received')
 
             if (!isUnmounted) {
               await signOut({
@@ -176,7 +166,6 @@ function Header ({ toggle }: { toggle?: any }) {
           // =========================================
 
           if (event?.sendType === 'change-duty-status') {
-            console.log('🚗 Duty status updated:', event)
 
             return
           }
@@ -186,7 +175,6 @@ function Header ({ toggle }: { toggle?: any }) {
           // =========================================
 
           if (event?.sendType === 'new_message') {
-            console.log('💬 New chat message:', event)
 
             return
           }
@@ -196,26 +184,22 @@ function Header ({ toggle }: { toggle?: any }) {
           // =========================================
 
           if (event?.sendType === 'message_read_status') {
-            console.log('👁️ Message read status:', event)
 
             return
           }
 
-          console.log('ℹ️ Unhandled WebSocket event:', event?.sendType)
         } catch (error) {
           console.error(' WebSocket message parsing error:', error)
         }
       }
 
       const handleOpen = () => {
-        console.log('🟢 WebSocket is open')
+        
+        
       }
 
       const handleClose = (event: CloseEvent) => {
-        console.log('🔴 WebSocket closed:', {
-          code: event.code,
-          reason: event.reason
-        })
+        
       }
 
       const handleError = (event: Event) => {
@@ -229,8 +213,6 @@ function Header ({ toggle }: { toggle?: any }) {
 
       return () => {
         isUnmounted = true
-
-        console.log('🧹 Cleaning up WebSocket')
 
         socket?.removeEventListener('message', handleMessage)
 

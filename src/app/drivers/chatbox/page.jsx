@@ -73,7 +73,6 @@ export default function Home () {
     socketRef.current = socket
 
     socket.onopen = () => {
-      console.log('WebSocket connected')
 
       // FIRST MESSAGE MUST ALWAYS BE AUTH
       socket.send(
@@ -88,14 +87,11 @@ export default function Home () {
       try {
         const message = JSON.parse(event.data)
 
-        console.log('WebSocket message:', message)
-
         // =================================================
         // AUTH SUCCESS
         // =================================================
 
         if (message.sendType === 'auth_success') {
-          console.log('WebSocket authentication successful')
 
           // Now request user information
           socket.send(
@@ -218,7 +214,6 @@ export default function Home () {
         // =================================================
 
         if (message.sendType === 'group_create_success') {
-          console.log('Group created:', message)
 
           return
         }
@@ -238,7 +233,6 @@ export default function Home () {
     }
 
     socket.onclose = event => {
-      console.log('WebSocket disconnected:', event.code, event.reason)
 
       if (socketRef.current === socket) {
         socketRef.current = null

@@ -11,12 +11,9 @@ export function initEcho (token: string): WebSocket {
     throw new Error('WebSocket authentication token is missing')
   }
 
-  console.log('Connecting WebSocket:', wsUrl)
-
   const socket = new WebSocket(wsUrl)
 
   socket.addEventListener('open', () => {
-    console.log('✅ WebSocket connected')
 
     // Send authentication only after connection is established
     socket.send(
@@ -26,17 +23,14 @@ export function initEcho (token: string): WebSocket {
       })
     )
 
-    console.log('🔐 WebSocket authentication request sent')
   })
 
   socket.addEventListener('message', event => {
     try {
       const data = JSON.parse(event.data)
 
-      console.log('📨 WebSocket server response:', data)
-
       if (data?.sendType === 'auth_success') {
-        console.log('✅ WebSocket authentication successful')
+
       }
 
       if (data?.sendType === 'auth_failed') {
@@ -52,10 +46,7 @@ export function initEcho (token: string): WebSocket {
   })
 
   socket.addEventListener('close', event => {
-    console.log('🔌 WebSocket disconnected:', {
-      code: event.code,
-      reason: event.reason
-    })
+    
   })
 
   return socket

@@ -246,7 +246,6 @@ const ActivityTable = () => {
     }
 
     if (!userId || !token) {
-      console.log('WebSocket waiting for userId/token...')
 
       return
     }
@@ -263,17 +262,15 @@ const ActivityTable = () => {
 
     const connectWebSocket = () => {
       if (!shouldReconnectRef.current) {
+       
         return
       }
-
-      console.log('Connecting WebSocket:', websocketUrl)
 
       const ws = new WebSocket(websocketUrl)
 
       wsRef.current = ws
 
       ws.onopen = () => {
-        console.log('WebSocket connected')
 
         // IMPORTANT:
         // Your WebSocket server requires an access token.
@@ -281,19 +278,9 @@ const ActivityTable = () => {
 
         const authMessage = {
           sendType: 'auth',
-
           senderId: Number(userId),
-
-          // Send the same token that your Header.tsx
-          // / echo.ts is using.
           token: token
         }
-
-        console.log('Sending WebSocket authentication:', {
-          sendType: authMessage.sendType,
-          senderId: authMessage.senderId,
-          hasToken: Boolean(authMessage.token)
-        })
 
         ws.send(JSON.stringify(authMessage))
       }
@@ -302,14 +289,11 @@ const ActivityTable = () => {
         try {
           const data = JSON.parse(event.data)
 
-          console.log('WebSocket message:', data)
-
           // ==========================================
           // AUTH SUCCESS
           // ==========================================
 
           if (data.sendType === 'auth_success' && data.authenticated === true) {
-            console.log('WebSocket authentication successful', data.user_id)
 
             return
           }
@@ -341,7 +325,6 @@ const ActivityTable = () => {
           // ==========================================
 
           if (data.sendType === 'change-duty-status') {
-            console.log('Duty status update received:', data)
 
             const shiftStatusData = {
               1: 'Off Duty',
@@ -394,7 +377,6 @@ const ActivityTable = () => {
       }
 
       ws.onclose = event => {
-        console.log('WebSocket closed:', event.code, event.reason)
 
         if (wsRef.current === ws) {
           wsRef.current = null
@@ -413,7 +395,6 @@ const ActivityTable = () => {
 
         // Reconnect only for normal network/server disconnects
         if (shouldReconnectRef.current) {
-          console.log('WebSocket reconnecting in 3 seconds...')
 
           reconnectTimeoutRef.current = setTimeout(() => {
             connectWebSocket()
@@ -425,7 +406,6 @@ const ActivityTable = () => {
     connectWebSocket()
 
     return () => {
-      console.log('Cleaning up WebSocket...')
 
       shouldReconnectRef.current = false
 

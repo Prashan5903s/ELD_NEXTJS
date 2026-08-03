@@ -2,6 +2,7 @@
 
 import Skeleton from 'react-loading-skeleton'
 import { useState, useEffect, useRef } from 'react'
+import { toast } from 'react-toastify'
 
 export default function ChatList ({
   id,
@@ -13,8 +14,6 @@ export default function ChatList ({
   setData,
   searchValue
 }) {
-
-  
   const idSelectRef = useRef(null)
   const socketRef = useRef(null)
 
@@ -24,19 +23,13 @@ export default function ChatList ({
   const [filteredUsers, setFilteredUsers] = useState([])
 
   const asset_url = process.env.NEXT_PUBLIC_ASSERT_URL
-
   const webSocketUrl = process.env.NEXT_PUBLIC_WEBSOCKET_URL
 
-  // =====================================================
-  // WEBSOCKET
-  // =====================================================
-
   useEffect(() => {
-    if (!id || !masterId || !webSocketUrl) {
+    if (!id || !masterId || !token || !webSocketUrl) {
       return
     }
 
-    // Prevent duplicate connections
     if (socketRef.current) {
       return
     }
@@ -46,15 +39,10 @@ export default function ChatList ({
     socketRef.current = socket
 
     socket.onopen = () => {
-      console.log('ChatList WebSocket connected')
-
-      // IMPORTANT:
-      // First authenticate the WebSocket.
-      // The server gets userId from the Laravel token.
       socket.send(
         JSON.stringify({
           sendType: 'auth',
-          token: token
+          token
         })
       )
     }
@@ -63,25 +51,18 @@ export default function ChatList ({
       try {
         const data = JSON.parse(event.data)
 
-        console.log('ChatList WebSocket:', data)
-
-        // ==========================================
-        // AUTH SUCCESS
-        // ==========================================
-
         if (data.sendType === 'auth_success') {
-          console.log('ChatList WebSocket authenticated:', data.user_id)
+          if (socket.readyState !== WebSocket.OPEN) {
+            return
+          }
 
-          // Now that authentication is successful,
-          // request user lists.
           socket.send(
             JSON.stringify({
               sendType: 'userInfo',
-              masterId: masterId
+              masterId
             })
           )
 
-          // Request unread messages.
           socket.send(
             JSON.stringify({
               sendType: 'totalMsg'
@@ -90,10 +71,6 @@ export default function ChatList ({
 
           return
         }
-
-        // ==========================================
-        // AUTH FAILED
-        // ==========================================
 
         if (
           data.sendType === 'auth_failed' ||
@@ -105,45 +82,44 @@ export default function ChatList ({
           return
         }
 
-        // ==========================================
-        // USER LIST
-        // ==========================================
-
         if (
           data.sendType === 'user_list' ||
           data.sendType === 'master_list' ||
           data.sendType === 'driver_list'
         ) {
-          setUserList(prev => [
-            {
+          setUserList(prev => {
+            const newUser = {
               id: data.id,
               type: Number(data.type || 0),
-              group_name: data.group_name,
+              group_name: data.group_name || '',
               first_name: data.first_name || '',
               last_name: data.last_name || '',
-              email: data.email,
+              email: data.email || '',
               sender: data.sender_id || data.created_by || data.id,
               image_url: data.image_url,
               sent_time: data.sent_time || data.created_at
-            },
-            ...prev.filter(
+            }
+
+            const filtered = prev.filter(
               item =>
                 !(
-                  Number(item.id) === Number(data.id) &&
-                  Number(item.type) === Number(data.type || 0)
+                  Number(item.id) === Number(newUser.id) &&
+                  Number(item.type) === Number(newUser.type)
                 )
             )
-          ])
+
+            return [...filtered, newUser]
+          })
 
           return
         }
 
-        // ==========================================
-        // GROUP LIST
-        // ==========================================
-
         if (data.sendType === 'group_list') {
           const groupId = Number(data.id || data.group_id)
+
+          if (!groupId) {
+            return
+          }
 
           setUserList(prev => {
             const exists = prev.some(
@@ -155,6 +131,7 @@ export default function ChatList ({
             }
 
             return [
+              ...prev,
               {
                 id: groupId,
                 type: 1,
@@ -165,17 +142,12 @@ export default function ChatList ({
                 sender: data.sender_id || data.created_by,
                 image_url: data.image_url,
                 sent_time: data.sent_time || data.created_at
-              },
-              ...prev
+              }
             ]
           })
 
           return
         }
-
-        // ==========================================
-        // TOTAL UNREAD MESSAGES
-        // ==========================================
 
         if (data.sendType === 'totalMsg') {
           const type = Number(data.type || 0)
@@ -187,14 +159,30 @@ export default function ChatList ({
             return
           }
 
-          // Don't show unread for currently selected chat
           const selectedId = Number(idSelectRef.current)
 
           if (conversationId === selectedId) {
             return
           }
 
-          // Group message
+          setUserList(prev => {
+            const index = prev.findIndex(
+              item =>
+                Number(item.id) === conversationId && Number(item.type) === type
+            )
+
+            if (index === -1) {
+              return prev
+            }
+
+            const selectedUser = prev[index]
+
+            return [
+              selectedUser,
+              ...prev.filter((_, itemIndex) => itemIndex !== index)
+            ]
+          })
+
           if (type === 1) {
             setUnRead(prev => {
               const key = `1_${conversationId}`
@@ -204,6 +192,7 @@ export default function ChatList ({
                 [key]: [
                   ...(prev[key] || []),
                   {
+                    id: data.id,
                     type: 1,
                     content: data.content,
                     sender: data.sender_id,
@@ -221,7 +210,6 @@ export default function ChatList ({
             return
           }
 
-          // One-to-one message
           setUnRead(prev => {
             const key = `0_${conversationId}`
 
@@ -230,6 +218,7 @@ export default function ChatList ({
               [key]: [
                 ...(prev[key] || []),
                 {
+                  id: data.id,
                   type: 0,
                   content: data.content,
                   image_url: data.image_url,
@@ -247,10 +236,6 @@ export default function ChatList ({
           return
         }
 
-        // ==========================================
-        // NEW MESSAGE
-        // ==========================================
-
         if (data.sendType === 'new_message') {
           const type = Number(data.type || 0)
 
@@ -259,30 +244,82 @@ export default function ChatList ({
 
           const selectedId = Number(idSelectRef.current)
 
-          // Ignore messages sent by current user
+          if (!conversationId) {
+            return
+          }
+
           if (Number(data.sender_id) === Number(id)) {
             return
           }
 
-          // Currently opened chat
           if (conversationId === selectedId) {
-            socket.send(
-              JSON.stringify({
-                sendType: 'update_read_status',
-                receiverId: conversationId,
-                isGroup: type === 1
-              })
-            )
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(
+                JSON.stringify({
+                  sendType: 'update_read_status',
+                  receiverId: conversationId,
+                  isGroup: type === 1
+                })
+              )
+            }
 
             return
           }
 
           const combinedKey = `${type}_${conversationId}`
 
+          const senderName =
+            type === 1
+              ? data.sender_name || data.group_name || 'New Group Message'
+              : data.sender_name || 'New Message'
+
+          const notificationMessage = data.image_url
+            ? '📷 Sent an image'
+            : data.content || 'You have a new message'
+
+          toast.info(
+            <div
+              onClick={() => {
+                handleClick(
+                  type,
+                  conversationId,
+                  data.sender_name || '',
+                  data.group_name || ''
+                )
+              }}
+              style={{
+                cursor: 'pointer'
+              }}
+            >
+              <strong>{senderName}</strong>
+
+              <div className='text-muted mt-1'>{notificationMessage}</div>
+            </div>
+          )
+
+          setUserList(prev => {
+            const index = prev.findIndex(
+              item =>
+                Number(item.id) === conversationId && Number(item.type) === type
+            )
+
+            if (index === -1) {
+              return prev
+            }
+
+            const selectedUser = prev[index]
+
+            return [
+              selectedUser,
+              ...prev.filter((_, itemIndex) => itemIndex !== index)
+            ]
+          })
+
           setUnRead(prev => ({
             ...prev,
             [combinedKey]: [
               {
+                id: data.id,
                 content: data.content,
                 image_url: data.image_url,
                 sent_time: data.sent_time,
@@ -300,19 +337,14 @@ export default function ChatList ({
           return
         }
 
-        // ==========================================
-        // READ STATUS
-        // ==========================================
-
         if (data.sendType === 'message_read_status') {
           const type = Number(data.type || 0)
 
-          let conversationId
+          const conversationId =
+            type === 1 ? Number(data.group_id) : Number(data.sender_id)
 
-          if (type === 1) {
-            conversationId = Number(data.group_id)
-          } else {
-            conversationId = Number(data.sender_id)
+          if (!conversationId) {
+            return
           }
 
           const combinedKey = `${type}_${conversationId}`
@@ -329,10 +361,6 @@ export default function ChatList ({
 
           return
         }
-
-        // ==========================================
-        // ERROR
-        // ==========================================
 
         if (data.type === 'error') {
           console.error(
@@ -352,9 +380,7 @@ export default function ChatList ({
       console.error('ChatList WebSocket error:', error)
     }
 
-    socket.onclose = event => {
-      console.log('ChatList WebSocket closed:', event.code, event.reason)
-
+    socket.onclose = () => {
       if (socketRef.current === socket) {
         socketRef.current = null
       }
@@ -372,11 +398,7 @@ export default function ChatList ({
         socket.close()
       }
     }
-  }, [id, masterId, webSocketUrl, token])
-
-  // =====================================================
-  // SEARCH
-  // =====================================================
+  }, [id, masterId, token, webSocketUrl])
 
   useEffect(() => {
     const search = (searchValue || '').toLowerCase()
@@ -396,27 +418,23 @@ export default function ChatList ({
     })
 
     setFilteredUsers(filtered)
+    setLoading(true)
   }, [searchValue, userList])
 
-  // =====================================================
-  // CLICK CHAT
-  // =====================================================
-
   const handleClick = (type, selectedId, name, group_name) => {
-    idSelectRef.current = Number(selectedId)
+    const numericType = Number(type)
+    const numericSelectedId = Number(selectedId)
 
-    setIsGroup(Number(type) === 1)
+    idSelectRef.current = numericSelectedId
 
-    setData(Number(type) === 1 ? group_name : name)
+    setIsGroup(numericType === 1)
 
-    setSelectId(Number(selectedId))
+    setData(numericType === 1 ? group_name : name)
 
+    setSelectId(numericSelectedId)
     setSelectedChat(true)
 
-    // Remove unread messages
-    // for selected chat
-
-    const combinedKey = `${Number(type)}_${Number(selectedId)}`
+    const combinedKey = `${numericType}_${numericSelectedId}`
 
     setUnRead(prev => {
       const newState = {
@@ -428,50 +446,37 @@ export default function ChatList ({
       return newState
     })
 
-    // Mark messages as read
     const socket = socketRef.current
 
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(
         JSON.stringify({
           sendType: 'update_read_status',
-
-          isGroup: Number(type) === 1,
-
-          receiverId: Number(selectedId)
+          isGroup: numericType === 1,
+          receiverId: numericSelectedId
         })
       )
     }
+
+    setUserList(prev => {
+      const index = prev.findIndex(
+        item =>
+          Number(item.id) === numericSelectedId &&
+          Number(item.type) === numericType
+      )
+
+      if (index === -1) {
+        return prev
+      }
+
+      const selectedUser = prev[index]
+
+      return [
+        selectedUser,
+        ...prev.filter((_, itemIndex) => itemIndex !== index)
+      ]
+    })
   }
-
-  // =====================================================
-  // FORMAT DATE
-  // =====================================================
-
-  const formatDate = dateString => {
-    if (!dateString) {
-      return ''
-    }
-
-    const date = new Date(dateString)
-
-    if (Number.isNaN(date.getTime())) {
-      return ''
-    }
-
-    return new Intl.DateTimeFormat('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    }).format(date)
-  }
-
-  // =====================================================
-  // MESSAGE TIME
-  // =====================================================
 
   const conTime = (time, dataMethod) => {
     if (!time) {
@@ -505,10 +510,6 @@ export default function ChatList ({
       year: 'numeric'
     }).format(date)
   }
-
-  // =====================================================
-  // RENDER
-  // =====================================================
 
   return (
     <div className='card-body pt-5' id='kt_chat_contacts_body'>
@@ -592,7 +593,6 @@ export default function ChatList ({
                           {unreadMessages[0].image_url ? (
                             <>
                               <i className='ki-picture ki-outline ps-1 fs-5' />
-
                               <div>Photo</div>
                             </>
                           ) : (
