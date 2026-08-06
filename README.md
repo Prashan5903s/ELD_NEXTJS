@@ -1,4 +1,3 @@
-````markdown
 # 🚛 ELD Frontend
 
 A modern **Next.js** frontend application for the **Electronic Logging Device (ELD)** system. This application provides an intuitive interface for fleet management, driver monitoring, Hours of Service (HOS) compliance, real-time messaging, and administrative operations.
@@ -302,4 +301,4 @@ Configure the required environment variables before deployment.
 # 📄 License
 
 This project is proprietary software developed for the ELD platform. Unauthorized distribution or reproduction is prohibited.
-````
+
