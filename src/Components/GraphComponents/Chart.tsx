@@ -1,8 +1,12 @@
 'use client'
-import React, { useMemo } from 'react'
+import React, { useMemo, useRef, useState, useEffect } from 'react'
+
 import dynamic from 'next/dynamic'
+
 import styles from '../../styles/chart.module.css'
+
 import { ApexOptions } from 'apexcharts'
+
 import {
   calculateTimeDifference,
   calculateTimeDifferenceAndFormat,
@@ -13,6 +17,30 @@ const GraphChart = dynamic(() => import('react-apexcharts'), {
   ssr: false,
   loading: () => <p>Loading chart...</p>
 })
+
+function timeToSeconds (timeStr) {
+  if (!timeStr) return 0
+  const [hours = 0, minutes = 0, seconds = 0] = timeStr.split(':').map(Number)
+  return hours * 3600 + minutes * 60 + seconds
+}
+
+function secondsToTimeStr (totalSeconds) {
+  totalSeconds = Math.max(0, Math.min(totalSeconds, 24 * 3600 - 1))
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = Math.floor(totalSeconds % 60)
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(
+    2,
+    '0'
+  )}:${String(seconds).padStart(2, '0')}`
+}
+
+const seriesToTruckStatus = {
+  0.5: { value: 1, name: 'On', color: 'yellow' },
+  1.5: { value: 2, name: 'D', color: 'green' },
+  2.5: { value: 3, name: 'SB', color: 'blue' },
+  3.5: { value: 4, name: 'OFF', color: 'grey' }
+}
 
 function Chart ({ processedData, params = null, rawData }) {
   const xLabels = Array.from({ length: 1440 / 15 }, (_, i) => {
@@ -360,54 +388,113 @@ function Chart ({ processedData, params = null, rawData }) {
     }
   ]
 
-  const seriesToTruckStatus = {
-    0.5: { value: 1, name: 'On', color: 'yellow' },
-    1.5: { value: 2, name: 'D', color: 'green' },
-    2.5: { value: 3, name: 'SB', color: 'blue' },
-    3.5: { value: 4, name: 'OFF', color: 'grey' }
+  // ---- Custom hover-driven tooltip state (replaces reliance on Apex's dataPointIndex snapping) ----
+  const chartWrapperRef = useRef(null)
+  const [hoverInfo, setHoverInfo] = useState(null) // { x, y, timeInterval, statusMeta }
+  const AXIS_START_SECONDS = 0
+  const AXIS_END_SECONDS = 24 * 3600 - 1 // matches xaxis min/max below
+
+  const findStatusAtTime = timeStr => {
+    const t = timeToSeconds(timeStr)
+
+    for (let i = 0; i < rawData.length; i++) {
+      const s = timeToSeconds(rawData[i].stime)
+      const e = timeToSeconds(rawData[i].etime)
+      if (t >= s && t < e) {
+        return rawData[i]
+      }
+    }
+    // fallback to last interval if hovering exactly at/after the last etime
+    if (rawData.length > 0) {
+      const last = rawData[rawData.length - 1]
+      if (t >= timeToSeconds(last.etime)) {
+        return last
+      }
+    }
+    return null
   }
+
+  const handleMouseMove = e => {
+    const wrapper = chartWrapperRef.current
+    if (!wrapper) return
+
+    const rect = wrapper.getBoundingClientRect()
+    const offsetX = e.clientX - rect.left
+    const offsetY = e.clientY - rect.top
+
+    // If cursor is outside the wrapper's actual box, clear tooltip and bail
+    if (
+      offsetX < 0 ||
+      offsetX > rect.width ||
+      offsetY < 0 ||
+      offsetY > rect.height
+    ) {
+      setHoverInfo(null)
+      return
+    }
+
+    const ratio = Math.min(Math.max(offsetX / rect.width, 0), 1)
+    const hoveredSeconds =
+      AXIS_START_SECONDS + ratio * (AXIS_END_SECONDS - AXIS_START_SECONDS)
+    const hoveredTimeStr = secondsToTimeStr(hoveredSeconds)
+
+    const matched = findStatusAtTime(hoveredTimeStr)
+
+    if (!matched) {
+      setHoverInfo(null)
+      return
+    }
+
+    const yVal = yProcessData(matched.status)
+    const statusMeta = seriesToTruckStatus[yVal]
+
+    setHoverInfo({
+      clientX: e.clientX,
+      clientY: e.clientY,
+      timeInterval: matched,
+      statusMeta
+    })
+  }
+
+  const handleMouseLeave = () => {
+    setHoverInfo(null)
+  }
+
+  // Safety net: clear tooltip if mouse leaves the browser window/document entirely,
+  // or if pointer moves fast enough that mouseleave on the wrapper never fires.
+  useEffect(() => {
+    const handleGlobalMouseMove = e => {
+      const wrapper = chartWrapperRef.current
+      if (!wrapper) return
+
+      const rect = wrapper.getBoundingClientRect()
+      const isInside =
+        e.clientX >= rect.left &&
+        e.clientX <= rect.right &&
+        e.clientY >= rect.top &&
+        e.clientY <= rect.bottom
+
+      if (!isInside) {
+        setHoverInfo(null)
+      }
+    }
+
+    const handleWindowBlur = () => setHoverInfo(null)
+
+    document.addEventListener('mousemove', handleGlobalMouseMove)
+    window.addEventListener('mouseout', handleWindowBlur)
+    window.addEventListener('blur', handleWindowBlur)
+
+    return () => {
+      document.removeEventListener('mousemove', handleGlobalMouseMove)
+      window.removeEventListener('mouseout', handleWindowBlur)
+      window.removeEventListener('blur', handleWindowBlur)
+    }
+  }, [])
 
   const options: ApexOptions = {
     tooltip: {
-      enabled: true,
-      x: {
-        show: false
-      },
-      custom: ({ series, seriesIndex, dataPointIndex, w }) => {
-        const yValue = series[seriesIndex][dataPointIndex]
-
-        const xValue = new Date(w.globals.seriesX[seriesIndex][dataPointIndex])
-          .toTimeString()
-          .slice(0, 8)
-
-        const timeInterval = getClosestTime(
-          rawData,
-          w.globals.categoryLabels[xValue],
-          seriesToTruckStatus[yValue]?.value
-        )
-
-        return `<div style="background: white; padding: 10px 5px; text-align: center; z-index: 9999;" class="custom-tooltip">
-                  <div style="display: flex; gap: 10px;">
-                    <strong style="background-color: ${
-                      seriesToTruckStatus[yValue]?.color
-                    };display: block; width: 30px;border-radius: 2px;">${
-          seriesToTruckStatus[yValue]?.name
-        }</strong>
-                    <strong style="display: block;">
-                     ${timeInterval?.stime} - ${timeInterval?.etime}
-                     </strong>
-                  </div>
-                  <div><p style="margin: 0;">${calculateTimeDifferenceAndFormat(
-                    timeInterval?.stime,
-                    timeInterval?.etime
-                  )}</p></div>
-                  <div style="width: 100%;text-align: center;">${
-                    timeInterval?.truckDetails[0]?.text != 'abc'
-                      ? timeInterval?.truckDetails[0]?.text
-                      : ''
-                  }</div>
-                </div>`
-      }
+      enabled: false // disabled: replaced by custom absolutely-positioned tooltip driven by mousemove
     },
     chart: {
       zoom: {
@@ -517,6 +604,9 @@ function Chart ({ processedData, params = null, rawData }) {
         style={{ position: 'relative', width: '100%', height: '100%' }}
       >
         <div
+          ref={chartWrapperRef}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
           className={`${styles.backgroundDiv}`}
           style={{
             position: 'absolute',
@@ -537,6 +627,68 @@ function Chart ({ processedData, params = null, rawData }) {
             width='100%'
           />
         </div>
+
+        {hoverInfo && hoverInfo.timeInterval && (
+          <div
+            style={{
+              position: 'fixed',
+              left: hoverInfo.clientX + 12,
+              top: hoverInfo.clientY - 60,
+              background: 'white',
+              padding: '10px 12px',
+              textAlign: 'center',
+              zIndex: 9999,
+              border: '1px solid #ddd',
+              borderRadius: '4px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              pointerEvents: 'none',
+              minWidth: '160px'
+            }}
+            className='custom-tooltip'
+          >
+            <div
+              style={{
+                display: 'flex',
+                gap: '10px',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <strong
+                style={{
+                  backgroundColor: hoverInfo.statusMeta?.color,
+                  display: 'block',
+                  width: '30px',
+                  borderRadius: '2px',
+                  color:
+                    hoverInfo.statusMeta?.color === 'yellow' ? '#000' : '#fff',
+                  fontSize: '11px',
+                  padding: '1px 0'
+                }}
+              >
+                {hoverInfo.statusMeta?.name}
+              </strong>
+              <strong style={{ display: 'block' }}>
+                {hoverInfo.timeInterval.stime} - {hoverInfo.timeInterval.etime}
+              </strong>
+            </div>
+            <div>
+              <p style={{ margin: '4px 0 0' }}>
+                {calculateTimeDifferenceAndFormat(
+                  hoverInfo.timeInterval.stime,
+                  hoverInfo.timeInterval.etime
+                )}
+              </p>
+            </div>
+            {hoverInfo.timeInterval.truckDetails?.[0]?.text &&
+              hoverInfo.timeInterval.truckDetails[0].text !== 'abc' && (
+                <div style={{ width: '100%', textAlign: 'center' }}>
+                  {hoverInfo.timeInterval.truckDetails[0].text}
+                </div>
+              )}
+          </div>
+        )}
+
         <div className={`${styles.foregroundHead}`}>
           <h5>M</h5> <h6>1</h6> <h6>2</h6> <h6>3</h6> <h6>4</h6> <h6>5</h6>{' '}
           <h6>6</h6> <h6>7</h6> <h6>8</h6> <h6>9</h6> <h6>10</h6> <h6>11</h6>
