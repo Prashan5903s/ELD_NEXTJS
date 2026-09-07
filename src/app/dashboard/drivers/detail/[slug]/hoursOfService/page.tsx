@@ -26,6 +26,26 @@ import { useJsApiLoader } from '@react-google-maps/api'
 import CoDriverModal from '../../../../../../Components/codriver'
 const LineChart = lazy(() => import('@/Components/GraphComponents/LineChart'))
 
+function convertTo24HourFormat (time12h) {
+  const [time, modifier] = time12h.trim().split(' ')
+
+  let [hours, minutes, seconds] = time.split(':')
+
+  if (!seconds) {
+    seconds = '00'
+  }
+
+  hours = parseInt(hours, 10)
+
+  if (modifier === 'AM') {
+    if (hours === 12) hours = 0
+  } else {
+    if (hours !== 12) hours += 12
+  }
+
+  return `${hours.toString().padStart(2, '0')}:${minutes}:${seconds}`
+}
+
 export default function HoursOfService ({ params }) {
   const driverId = params.slug
   const MemoizedLineChart = memo(LineChart)
@@ -36,15 +56,12 @@ export default function HoursOfService ({ params }) {
   const [isDataLoading, setIsDataLoading] = useState(false)
   const [isGraphLoading, setGraphLoading] = useState(false)
   const [dropdown, setDropdown] = useState(false)
-  const [isViolation, setIsViolation] = useState(false) // Example initialization
   const BackEND = process.env.NEXT_PUBLIC_BACKEND_API_URL
   const [datas, setData] = useState(null)
   const [graphDataMap, setGraphDataMap] = useState({}) // Store graph data by date key
   const [log, setLog] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [isDetailOpen, setIsDetailOpen] = useState(false)
-  const [isHourOpen, setIsHourOpen] = useState(false)
   const { slug } = useParams()
 
   function formatTimes (todays) {
@@ -476,21 +493,6 @@ export default function HoursOfService ({ params }) {
           const endLoc = logEntry[dateKey][4]
           var dataEntry = logEntry[dateKey][2]
 
-          function convertTo24HourFormat (time12h) {
-            const [time, modifier] = time12h.split(' ')
-
-            let [hours, minutes] = time.split(':')
-            if (hours === '12') {
-              hours = '00'
-            }
-
-            if (modifier === 'PM') {
-              hours = (parseInt(hours, 10) + 12).toString() // Convert to string here
-            }
-
-            return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`
-          }
-
           function calculateTimeDifference (startTime, endTime) {
             const start = new Date(`01/01/2000 ${startTime}`)
             const end = new Date(`01/01/2000 ${endTime}`)
@@ -512,18 +514,18 @@ export default function HoursOfService ({ params }) {
 
           if (dataEntry.length > 0) {
             var stime = dataEntry[0][4]
-            var etime = '12:00 AM'
+            var etime = '12:00:00 AM'
             const start24h = convertTo24HourFormat(stime)
             const end24h = convertTo24HourFormat(etime)
 
             const result = calculateTimeDifference(end24h, start24h)
-            if (stime != '12:00 AM') {
+            if (stime != '12:00:00 AM') {
               dataEntry.unshift([
                 `${result}`,
                 'Off duty',
                 null,
                 '......',
-                '12:00 AM',
+                '12:00:00 AM',
                 `${stime}`,
                 [],
                 '....'
@@ -535,8 +537,8 @@ export default function HoursOfService ({ params }) {
               'Off duty',
               null,
               '......',
-              '12:00 AM',
-              '12:00 PM',
+              '12:00:00 AM',
+              '12:00:00 PM',
               [],
               '....'
             ])
