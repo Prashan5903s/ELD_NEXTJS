@@ -14,6 +14,8 @@ export default function ChatList ({
   setData,
   searchValue
 }) {
+  console.log('Data', id, masterId, searchValue, token)
+
   const idSelectRef = useRef(null)
   const socketRef = useRef(null)
 
