@@ -34,7 +34,6 @@ import { useJsApiLoader } from '@react-google-maps/api'
 const LineChart = lazy(() => import('@/Components/GraphComponents/LineChart'))
 
 export default function HoursOfService ({ params }) {
-
   const MemoizedLineChart = memo(LineChart)
 
   const [isDateOpen, setIsDateOpen] = useState(new Set())
@@ -122,13 +121,11 @@ export default function HoursOfService ({ params }) {
   })
 
   interface User {
-
     token: string
     // Add other properties you expect in the user object
   }
 
   interface SessionData {
-
     user?: User
     // Add other properties you expect in the session data
   }
@@ -193,7 +190,6 @@ export default function HoursOfService ({ params }) {
   // Use useEffect to call the debounced fetch function
   useEffect(() => {
     if (token) {
-
       fetchDriverDetails()
     }
   }, [fetchDriverDetails, token])
@@ -235,9 +231,7 @@ export default function HoursOfService ({ params }) {
 
   // Use useEffect to call the debounced fetch function
   useEffect(() => {
-    
     if (token) {
-
       fetchLogs()
     }
   }, [fetchLogs, token])
@@ -252,7 +246,6 @@ export default function HoursOfService ({ params }) {
   }
 
   const handleExpandAll = () => {
-
     const allIndexes = new Set(finalData.map((_, index) => index))
     setIsDateOpen(allIndexes)
     setIsAllOpen(true)
@@ -261,7 +254,6 @@ export default function HoursOfService ({ params }) {
   const [graphDatas, setGraphData] = useState({}) // Object to store data for each row
 
   const GraphData = useCallback(
-    
     debounce(async (date, index) => {
       setLoading(true)
       try {
@@ -495,19 +487,50 @@ export default function HoursOfService ({ params }) {
           const entryDatas = logEntry[dateKey]
           var dataEntry = logEntry[dateKey][2]
 
-          function convertTo24HourFormat (time12h) {
-            const [time, modifier] = time12h.split(' ')
-
-            let [hours, minutes] = time.split(':')
-            if (hours === '12') {
-              hours = '00'
+          function convertTo24HourFormat (time12h: string): string {
+            if (!time12h || typeof time12h !== 'string') {
+              return ''
             }
 
-            if (modifier === 'PM') {
-              hours = (parseInt(hours, 10) + 12).toString() // Convert to string here
+            const [time, modifier] = time12h.trim().split(/\s+/)
+
+            if (!time || !modifier) {
+              return ''
             }
 
-            return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`
+            const [hoursString, minutesString = '00'] = time.split(':')
+
+            const hours = parseInt(hoursString, 10)
+            const minutes = parseInt(minutesString, 10)
+
+            if (
+              Number.isNaN(hours) ||
+              Number.isNaN(minutes) ||
+              hours < 1 ||
+              hours > 12 ||
+              minutes < 0 ||
+              minutes > 59
+            ) {
+              return ''
+            }
+
+            let hours24 = hours
+
+            if (modifier.toUpperCase() === 'AM') {
+              if (hours24 === 12) {
+                hours24 = 0
+              }
+            } else if (modifier.toUpperCase() === 'PM') {
+              if (hours24 !== 12) {
+                hours24 += 12
+              }
+            } else {
+              return ''
+            }
+
+            return `${hours24.toString().padStart(2, '0')}:${minutes
+              .toString()
+              .padStart(2, '0')}:00`
           }
 
           function calculateTimeDifference (startTime, endTime) {

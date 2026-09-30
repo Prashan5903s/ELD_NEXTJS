@@ -37,6 +37,10 @@ export default function Home () {
           const id = response.data.id
           const master_id = response.data.master_id
           const master_company_id = response.data.master_company_id
+
+          console.log("Response", response);
+          
+
           setId(id)
           setMasterId(master_id)
           setMasterCompanyId(master_company_id)
