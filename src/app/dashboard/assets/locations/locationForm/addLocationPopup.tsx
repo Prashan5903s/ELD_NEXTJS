@@ -115,7 +115,9 @@ const AddLocationModal: React.FC<{
   })
 
   const [isLoading, setIsLoading] = useState(false)
+
   const [editData, setEditData] = useState<any>(null)
+
   const [loctn, setLoctn] = useState<LocationTypes | null>(null)
 
   const [shapeDatas, setShapeData] = useState<string | null>(null)
@@ -127,6 +129,7 @@ const AddLocationModal: React.FC<{
   const [map, setMap] = useState<google.maps.Map | null>(null)
 
   const drawRef = useRef<TerraDraw | null>(null)
+
   const mapRef = useRef<google.maps.Map | null>(null)
 
   const initializedEditShapeRef = useRef(false)
@@ -140,10 +143,20 @@ const AddLocationModal: React.FC<{
     height: '400px'
   }
 
-  const mapCenter = {
-    lat: 36.7378,
-    lng: -119.7871
-  }
+  /*
+   * This is ONLY the initial map position.
+   *
+   * Do not pass this through `center={}` because that makes
+   * GoogleMap controlled and can move the map back here
+   * whenever React rerenders.
+   */
+  const mapCenter = useMemo(
+    () => ({
+      lat: 36.7378,
+      lng: -119.7871
+    }),
+    []
+  )
 
   const libraries: ('places' | 'geometry' | 'drawing')[] = useMemo(
     () => ['places', 'geometry', 'drawing'],
@@ -158,7 +171,7 @@ const AddLocationModal: React.FC<{
   })
 
   /* ------------------------------------------------------------------------ */
-  /* Session                                                                   */
+  /* Session                                                                  */
   /* ------------------------------------------------------------------------ */
 
   const { data: session } =
@@ -171,221 +184,16 @@ const AddLocationModal: React.FC<{
   const url = process.env.NEXT_PUBLIC_BACKEND_API_URL
 
   /* ------------------------------------------------------------------------ */
-  /* Form validation                                                           */
-  /* ------------------------------------------------------------------------ */
-
-  const formValidations = {
-    shapeData: {
-      required: 'Location map is required'
-    },
-    name: {
-      required: 'Name is required',
-      maxLength: {
-        value: 60,
-        message: 'Name must be at most 60 characters long'
-      },
-      pattern: {
-        value: /^[A-Za-z\s]+$/i,
-        message: 'Name should be only alphabetic characters and spaces'
-      }
-    },
-    address: {
-      required: 'Address is required',
-      maxLength: {
-        value: 60,
-        message: 'Address must be at most 60 characters long'
-      }
-    },
-    address_type: {
-      required: 'Address type is required'
-    },
-    tags: {},
-    note: {}
-  }
-
-  const validateForm = useCallback(() => {
-    let isValid = true
-
-    const validationErrors: ErrorVal = {}
-
-    const requiredFields = [
-      'name',
-      'address',
-      'address_type',
-      'shapeData'
-    ] as const
-
-    requiredFields.forEach(key => {
-      const value = locationField[key]
-
-      if (
-        formValidations[key]?.required &&
-        (!value || value.toString().trim() === '')
-      ) {
-        validationErrors[key] = formValidations[key].required
-        isValid = false
-      }
-    })
-
-    /* Name validation */
-    if (locationField.name) {
-      if (locationField.name.length > formValidations.name.maxLength.value) {
-        validationErrors.name = formValidations.name.maxLength.message
-        isValid = false
-      }
-
-      if (!formValidations.name.pattern.value.test(locationField.name)) {
-        validationErrors.name = formValidations.name.pattern.message
-        isValid = false
-      }
-    }
-
-    /* Address validation */
-    if (locationField.address) {
-      if (
-        locationField.address.length > formValidations.address.maxLength.value
-      ) {
-        validationErrors.address = formValidations.address.maxLength.message
-        isValid = false
-      }
-    }
-
-    setErrors(validationErrors)
-
-    return isValid
-  }, [locationField])
-
-  /* ------------------------------------------------------------------------ */
-  /* Form change                                                               */
-  /* ------------------------------------------------------------------------ */
-
-  const changeVehicleFieldHandler = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target
-
-    setLocationField(prev => ({
-      ...prev,
-      [name]: value
-    }))
-
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: undefined
-      }))
-    }
-  }
-
-  /* ------------------------------------------------------------------------ */
-  /* Fetch location types                                                      */
-  /* ------------------------------------------------------------------------ */
-
-  const fetchData = useCallback(async () => {
-    if (!token || !url) return
-
-    try {
-      const response = await axios.get(`${url}/asset/location`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      })
-
-      setLoctn(response?.data || {})
-    } catch (error) {
-      console.error('Error fetching location data:', error)
-    }
-  }, [token, url])
-
-  /* ------------------------------------------------------------------------ */
-  /* Fetch edit data                                                           */
-  /* ------------------------------------------------------------------------ */
-
-  const fetchEditData = useCallback(async () => {
-    if (!id || !token || !url) return
-
-    try {
-      const response = await axios.get(`${url}/asset/location/${id}/edit`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      })
-
-      const { location } = response.data
-
-      setEditData(location)
-
-      const existingShapeData = location?.shapeData || null
-
-      setShapeData(existingShapeData)
-
-      setLocationField({
-        name: location?.name || '',
-        address: location?.address || '',
-        address_type: location?.type || '',
-        tags: location?.tags || '',
-        note: location?.note || '',
-        shapeData: existingShapeData
-      })
-    } catch (error) {
-      console.error('Error fetching edit data:', error)
-    }
-  }, [id, token, url])
-
-  /* ------------------------------------------------------------------------ */
-  /* Initial data loading                                                      */
-  /* ------------------------------------------------------------------------ */
-
-  useEffect(() => {
-    if (!open || !token) return
-
-    setIsDataLoading(false)
-
-    const load = async () => {
-      await Promise.all([fetchData(), id ? fetchEditData() : Promise.resolve()])
-
-      setIsDataLoading(true)
-    }
-
-    load()
-  }, [open, token, id, fetchData, fetchEditData])
-
-  /* ------------------------------------------------------------------------ */
-  /* Reset when modal changes                                                   */
-  /* ------------------------------------------------------------------------ */
-
-  useEffect(() => {
-    if (!open) {
-      initializedEditShapeRef.current = false
-      return
-    }
-
-    if (!id) {
-      initializedEditShapeRef.current = false
-
-      setEditData(null)
-
-      setShapeData(null)
-
-      setLocationField({
-        shapeData: null,
-        name: '',
-        address: '',
-        address_type: '',
-        tags: '',
-        note: ''
-      })
-
-      setErrors({})
-    }
-  }, [open, id])
-
-  /* ------------------------------------------------------------------------ */
   /* Calculate polygon area                                                    */
   /* ------------------------------------------------------------------------ */
 
   const calculatePolygonArea = useCallback(
-    (paths: Array<{ lat: number; lng: number }>) => {
+    (
+      paths: Array<{
+        lat: number
+        lng: number
+      }>
+    ) => {
       if (!isLoaded || !google?.maps?.geometry?.spherical || paths.length < 3) {
         return 0
       }
@@ -400,7 +208,7 @@ const AddLocationModal: React.FC<{
   )
 
   /* ------------------------------------------------------------------------ */
-  /* Convert Terra Draw feature to backend ShapeData                           */
+  /* Convert Terra Draw feature to ShapeData                                   */
   /* ------------------------------------------------------------------------ */
 
   const featureToShapeData = useCallback(
@@ -414,7 +222,7 @@ const AddLocationModal: React.FC<{
       const coordinates = feature.geometry.coordinates
 
       /* -------------------------------------------------------------------- */
-      /* Circle                                                                 */
+      /* Circle                                                               */
       /* -------------------------------------------------------------------- */
 
       if (mode === 'circle') {
@@ -439,6 +247,10 @@ const AddLocationModal: React.FC<{
             ? -1
             : undefined
         )
+
+        if (!points.length) {
+          return null
+        }
 
         points.forEach(([lng, lat]: [number, number]) => {
           centerLng += lng
@@ -476,7 +288,7 @@ const AddLocationModal: React.FC<{
       }
 
       /* -------------------------------------------------------------------- */
-      /* Rectangle                                                              */
+      /* Rectangle                                                            */
       /* -------------------------------------------------------------------- */
 
       if (mode === 'rectangle') {
@@ -491,7 +303,12 @@ const AddLocationModal: React.FC<{
           lng
         }))
 
+        if (!points.length) {
+          return null
+        }
+
         const lats = points.map(point => point.lat)
+
         const lngs = points.map(point => point.lng)
 
         const north = Math.max(...lats)
@@ -514,7 +331,7 @@ const AddLocationModal: React.FC<{
       }
 
       /* -------------------------------------------------------------------- */
-      /* Polygon                                                                */
+      /* Polygon                                                              */
       /* -------------------------------------------------------------------- */
 
       if (mode === 'polygon') {
@@ -527,7 +344,9 @@ const AddLocationModal: React.FC<{
           lng
         }))
 
-        /* Remove GeoJSON closing coordinate */
+        /*
+         * Remove GeoJSON closing coordinate.
+         */
         if (paths.length > 1) {
           const first = paths[0]
           const last = paths[paths.length - 1]
@@ -535,6 +354,10 @@ const AddLocationModal: React.FC<{
           if (first.lat === last.lat && first.lng === last.lng) {
             paths = paths.slice(0, -1)
           }
+        }
+
+        if (paths.length < 3) {
+          return null
         }
 
         return {
@@ -550,14 +373,16 @@ const AddLocationModal: React.FC<{
   )
 
   /* ------------------------------------------------------------------------ */
-  /* Shape -> Terra Draw feature                                               */
+  /* ShapeData -> Terra Draw Feature                                           */
   /* ------------------------------------------------------------------------ */
 
   const shapeDataToFeature = useCallback((shapeData: ShapeData) => {
-    if (!shapeData) return null
+    if (!shapeData) {
+      return null
+    }
 
     /* -------------------------------------------------------------------- */
-    /* Circle                                                                 */
+    /* Circle                                                               */
     /* -------------------------------------------------------------------- */
 
     if (shapeData.type === 'circle') {
@@ -594,7 +419,7 @@ const AddLocationModal: React.FC<{
     }
 
     /* -------------------------------------------------------------------- */
-    /* Rectangle                                                              */
+    /* Rectangle                                                            */
     /* -------------------------------------------------------------------- */
 
     if (shapeData.type === 'rectangle') {
@@ -621,7 +446,7 @@ const AddLocationModal: React.FC<{
     }
 
     /* -------------------------------------------------------------------- */
-    /* Polygon                                                                */
+    /* Polygon                                                              */
     /* -------------------------------------------------------------------- */
 
     if (shapeData.type === 'polygon') {
@@ -653,7 +478,257 @@ const AddLocationModal: React.FC<{
   }, [])
 
   /* ------------------------------------------------------------------------ */
-  /* Initialize Terra Draw                                                     */
+  /* Get latest Terra Draw shape                                               */
+  /* ------------------------------------------------------------------------ */
+
+  const getLatestShapeData = useCallback((): string | null => {
+    const draw = drawRef.current
+
+    if (!draw) {
+      return null
+    }
+
+    const features = draw.getSnapshot()
+
+    if (!features || features.length === 0) {
+      return null
+    }
+
+    const validFeatures = features.filter(
+      (feature: any) =>
+        feature?.geometry &&
+        feature?.properties?.mode &&
+        ['circle', 'rectangle', 'polygon'].includes(feature.properties.mode)
+    )
+
+    if (!validFeatures.length) {
+      return null
+    }
+
+    const feature = validFeatures[validFeatures.length - 1]
+
+    const latestShape = featureToShapeData(feature)
+
+    if (!latestShape) {
+      return null
+    }
+
+    return JSON.stringify(latestShape)
+  }, [featureToShapeData])
+
+  /* ------------------------------------------------------------------------ */
+  /* Validation                                                               */
+  /* ------------------------------------------------------------------------ */
+
+  const validateForm = useCallback(
+    (shapeDataOverride?: string | null) => {
+      let isValid = true
+
+      const validationErrors: ErrorVal = {}
+
+      const currentShapeData = shapeDataOverride ?? locationField.shapeData
+
+      /* -------------------------------------------------------------------- */
+      /* Shape                                                                 */
+      /* -------------------------------------------------------------------- */
+
+      if (!currentShapeData || currentShapeData.trim() === '') {
+        validationErrors.shapeData = 'Location map is required'
+
+        isValid = false
+      }
+
+      /* -------------------------------------------------------------------- */
+      /* Name                                                                  */
+      /* -------------------------------------------------------------------- */
+
+      if (!locationField.name || locationField.name.trim() === '') {
+        validationErrors.name = 'Name is required'
+
+        isValid = false
+      } else {
+        if (locationField.name.length > 60) {
+          validationErrors.name = 'Name must be at most 60 characters long'
+
+          isValid = false
+        }
+
+        if (!/^[A-Za-z\s]+$/i.test(locationField.name)) {
+          validationErrors.name =
+            'Name should be only alphabetic characters and spaces'
+
+          isValid = false
+        }
+      }
+
+      /* -------------------------------------------------------------------- */
+      /* Address                                                               */
+      /* -------------------------------------------------------------------- */
+
+      if (!locationField.address || locationField.address.trim() === '') {
+        validationErrors.address = 'Address is required'
+
+        isValid = false
+      } else if (locationField.address.length > 60) {
+        validationErrors.address = 'Address must be at most 60 characters long'
+
+        isValid = false
+      }
+
+      /* -------------------------------------------------------------------- */
+      /* Address type                                                          */
+      /* -------------------------------------------------------------------- */
+
+      if (
+        !locationField.address_type ||
+        locationField.address_type.trim() === ''
+      ) {
+        validationErrors.address_type = 'Address type is required'
+
+        isValid = false
+      }
+
+      setErrors(validationErrors)
+
+      return isValid
+    },
+    [locationField]
+  )
+
+  /* ------------------------------------------------------------------------ */
+  /* Field change                                                             */
+  /* ------------------------------------------------------------------------ */
+
+  const changeVehicleFieldHandler = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target
+
+    setLocationField(prev => ({
+      ...prev,
+      [name]: value
+    }))
+
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: undefined
+      }))
+    }
+  }
+
+  /* ------------------------------------------------------------------------ */
+  /* Fetch location types                                                     */
+  /* ------------------------------------------------------------------------ */
+
+  const fetchData = useCallback(async () => {
+    if (!token || !url) {
+      return
+    }
+
+    try {
+      const response = await axios.get(`${url}/asset/location`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+
+      setLoctn(response?.data || {})
+    } catch (error) {
+      console.error('Error fetching location data:', error)
+    }
+  }, [token, url])
+
+  /* ------------------------------------------------------------------------ */
+  /* Fetch edit data                                                          */
+  /* ------------------------------------------------------------------------ */
+
+  const fetchEditData = useCallback(async () => {
+    if (!id || !token || !url) {
+      return
+    }
+
+    try {
+      const response = await axios.get(`${url}/asset/location/${id}/edit`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+
+      const { location } = response.data
+
+      setEditData(location)
+
+      const existingShapeData = location?.shapeData || null
+
+      setShapeData(existingShapeData)
+
+      setLocationField({
+        name: location?.name || '',
+        address: location?.address || '',
+        address_type: location?.type || '',
+        tags: location?.tags || '',
+        note: location?.note || '',
+        shapeData: existingShapeData
+      })
+    } catch (error) {
+      console.error('Error fetching edit data:', error)
+    }
+  }, [id, token, url])
+
+  /* ------------------------------------------------------------------------ */
+  /* Initial loading                                                          */
+  /* ------------------------------------------------------------------------ */
+
+  useEffect(() => {
+    if (!open || !token) {
+      return
+    }
+
+    setIsDataLoading(false)
+
+    const load = async () => {
+      await Promise.all([fetchData(), id ? fetchEditData() : Promise.resolve()])
+
+      setIsDataLoading(true)
+    }
+
+    load()
+  }, [open, token, id, fetchData, fetchEditData])
+
+  /* ------------------------------------------------------------------------ */
+  /* Reset for Add mode                                                       */
+  /* ------------------------------------------------------------------------ */
+
+  useEffect(() => {
+    if (!open) {
+      initializedEditShapeRef.current = false
+
+      return
+    }
+
+    if (!id) {
+      initializedEditShapeRef.current = false
+
+      setEditData(null)
+
+      setShapeData(null)
+
+      setLocationField({
+        shapeData: null,
+        name: '',
+        address: '',
+        address_type: '',
+        tags: '',
+        note: ''
+      })
+
+      setErrors({})
+    }
+  }, [open, id])
+
+  /* ------------------------------------------------------------------------ */
+  /* Map load / Terra Draw initialization                                     */
   /* ------------------------------------------------------------------------ */
 
   const onMapLoad = useCallback(
@@ -661,14 +736,8 @@ const AddLocationModal: React.FC<{
       setMap(mapInstance)
       mapRef.current = mapInstance
 
-      if (drawRef.current) {
-        return
-      }
-
       const initializeDrawing = () => {
-        if (drawRef.current) {
-          return
-        }
+        if (drawRef.current) return
 
         const draw = new TerraDraw({
           adapter: new TerraDrawGoogleMapsAdapter({
@@ -736,19 +805,9 @@ const AddLocationModal: React.FC<{
           }
         })
 
-        /* -------------------------------------------------------------- */
-        /* Every time a shape is created/changed                           */
-        /* -------------------------------------------------------------- */
-
         draw.on('change', features => {
-          if (!features || features.length === 0) {
-            return
-          }
+          if (!features || features.length === 0) return
 
-          /*
-           * Ignore Terra Draw helper features such as
-           * selection/midpoint features.
-           */
           const validFeatures = features.filter(
             (feature: any) =>
               feature?.geometry &&
@@ -758,21 +817,13 @@ const AddLocationModal: React.FC<{
               )
           )
 
-          if (!validFeatures.length) {
-            return
-          }
+          if (!validFeatures.length) return
 
-          /*
-           * The application supports one shape per location.
-           * Therefore use the latest shape.
-           */
           const feature = validFeatures[validFeatures.length - 1]
 
           const converted = featureToShapeData(feature)
 
-          if (!converted) {
-            return
-          }
+          if (!converted) return
 
           const serialized = JSON.stringify(converted)
 
@@ -790,10 +841,7 @@ const AddLocationModal: React.FC<{
         })
       }
 
-      /*
-       * Google Maps projection is required by the
-       * Terra Draw Google Maps adapter.
-       */
+      // Google Maps projection may not be ready immediately
       if (mapInstance.getProjection()) {
         initializeDrawing()
       } else {
@@ -807,8 +855,20 @@ const AddLocationModal: React.FC<{
     [featureToShapeData, id]
   )
 
+  useEffect(() => {
+    if (!open || !map || !isLoaded) return
+
+    const timer = setTimeout(() => {
+      google.maps.event.trigger(map, 'resize')
+      map.setCenter(mapCenter)
+      map.setZoom(10)
+    }, 100)
+
+    return () => clearTimeout(timer)
+  }, [open, map, isLoaded, mapCenter])
+
   /* ------------------------------------------------------------------------ */
-  /* Load existing shape into Terra Draw                                       */
+  /* Load existing shape                                                      */
   /* ------------------------------------------------------------------------ */
 
   useEffect(() => {
@@ -822,6 +882,7 @@ const AddLocationModal: React.FC<{
 
     if (!editData.shapeData) {
       initializedEditShapeRef.current = true
+
       return
     }
 
@@ -836,9 +897,6 @@ const AddLocationModal: React.FC<{
 
       const draw = drawRef.current
 
-      /*
-       * Remove any existing Terra Draw features.
-       */
       draw.clear()
 
       const result = draw.addFeatures([feature as any])
@@ -847,9 +905,10 @@ const AddLocationModal: React.FC<{
 
       initializedEditShapeRef.current = true
 
-      /*
-       * Fit map to the loaded shape.
-       */
+      /* -------------------------------------------------------------------- */
+      /* Fit bounds                                                            */
+      /* -------------------------------------------------------------------- */
+
       const bounds = new google.maps.LatLngBounds()
 
       if (parsedShape.type === 'circle') {
@@ -871,6 +930,7 @@ const AddLocationModal: React.FC<{
         )
 
         bounds.extend(northEast)
+
         bounds.extend(southWest)
 
         map.fitBounds(bounds)
@@ -902,9 +962,6 @@ const AddLocationModal: React.FC<{
         map.fitBounds(bounds)
       }
 
-      /*
-       * Enable selection/editing after loading.
-       */
       draw.setMode('select')
     } catch (error) {
       console.error('Error loading existing shape:', error)
@@ -912,7 +969,7 @@ const AddLocationModal: React.FC<{
   }, [id, editData, map, isLoaded, shapeDataToFeature])
 
   /* ------------------------------------------------------------------------ */
-  /* Cleanup Terra Draw                                                       */
+  /* Cleanup                                                                  */
   /* ------------------------------------------------------------------------ */
 
   useEffect(() => {
@@ -930,20 +987,32 @@ const AddLocationModal: React.FC<{
   }, [])
 
   /* ------------------------------------------------------------------------ */
-  /* Change drawing mode                                                       */
+  /* Change drawing mode                                                      */
   /* ------------------------------------------------------------------------ */
 
   const changeDrawingMode = useCallback(
     (mode: 'circle' | 'rectangle' | 'polygon') => {
       const draw = drawRef.current
 
-      if (!draw) {
+      const currentMap = mapRef.current
+
+      if (!draw || !currentMap) {
         return
       }
 
       /*
-       * Since only one shape is allowed for a location,
-       * remove the previous shape before drawing another.
+       * Save the current viewport.
+       *
+       * This prevents the map from jumping
+       * back to the default location when
+       * changing drawing modes.
+       */
+      const currentCenter = currentMap.getCenter()
+
+      const currentZoom = currentMap.getZoom()
+
+      /*
+       * Remove previous shape.
        */
       draw.clear()
 
@@ -959,13 +1028,27 @@ const AddLocationModal: React.FC<{
         shapeData: undefined
       }))
 
+      /*
+       * Change drawing mode.
+       */
       draw.setMode(mode)
+
+      /*
+       * Restore viewport.
+       */
+      if (currentCenter) {
+        currentMap.setCenter(currentCenter)
+      }
+
+      if (currentZoom !== undefined) {
+        currentMap.setZoom(currentZoom)
+      }
     },
     []
   )
 
   /* ------------------------------------------------------------------------ */
-  /* Clear shape                                                               */
+  /* Clear shape                                                              */
   /* ------------------------------------------------------------------------ */
 
   const clearShape = useCallback(() => {
@@ -979,54 +1062,30 @@ const AddLocationModal: React.FC<{
       ...prev,
       shapeData: null
     }))
+
+    setErrors(prev => ({
+      ...prev,
+      shapeData: undefined
+    }))
   }, [])
 
   /* ------------------------------------------------------------------------ */
-  /* Submit                                                                    */
+  /* Submit API                                                               */
   /* ------------------------------------------------------------------------ */
 
-  const handleFormSubmission = async () => {
+  const handleFormSubmission = async (latestShapeData: string | null) => {
     if (!token || !url) {
       console.error('No authentication token available')
+
       return
     }
 
-    /*
-     * Make sure the latest Terra Draw shape is used.
-     */
-    if (drawRef.current) {
-      const features = drawRef.current.getSnapshot()
+    const shapeData = latestShapeData || locationField.shapeData
 
-      const validFeatures = features.filter(
-        (feature: any) =>
-          feature?.geometry &&
-          feature?.properties?.mode &&
-          ['circle', 'rectangle', 'polygon'].includes(feature.properties.mode)
-      )
-
-      if (validFeatures.length > 0) {
-        const feature = validFeatures[validFeatures.length - 1]
-
-        const latestShape = featureToShapeData(feature)
-
-        if (latestShape) {
-          const serialized = JSON.stringify(latestShape)
-
-          setShapeData(serialized)
-
-          /*
-           * Use this local value for the API request
-           * rather than waiting for React state.
-           */
-          locationField.shapeData = serialized
-        }
-      }
-    }
-
-    if (!locationField.shapeData) {
+    if (!shapeData) {
       setErrors(prev => ({
         ...prev,
-        shapeData: 'Select location on map'
+        shapeData: 'Location map is required'
       }))
 
       return
@@ -1046,7 +1105,7 @@ const AddLocationModal: React.FC<{
         url: apiUrl,
         data: {
           ...locationField,
-          shapeData: locationField.shapeData
+          shapeData
         },
         headers: {
           Authorization: `Bearer ${token}`
@@ -1087,21 +1146,52 @@ const AddLocationModal: React.FC<{
   }
 
   /* ------------------------------------------------------------------------ */
-  /* Submit form                                                               */
+  /* Form submit                                                              */
   /* ------------------------------------------------------------------------ */
 
   const onSubmitChange = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
-    if (!validateForm()) {
+    /*
+     * IMPORTANT:
+     *
+     * Read the shape directly from Terra Draw
+     * before validation.
+     *
+     * React state updates asynchronously, so
+     * relying only on locationField.shapeData
+     * can cause "Location map is required".
+     */
+    const latestShapeData = getLatestShapeData() || locationField.shapeData
+
+    /*
+     * Validate using the latest shape.
+     */
+    if (!validateForm(latestShapeData)) {
       return
     }
 
-    handleFormSubmission()
+    /*
+     * Keep React state synchronized.
+     */
+    if (latestShapeData && latestShapeData !== locationField.shapeData) {
+      setShapeData(latestShapeData)
+
+      setLocationField(prev => ({
+        ...prev,
+        shapeData: latestShapeData
+      }))
+    }
+
+    /*
+     * Send the latest shape directly.
+     * Do not wait for React state.
+     */
+    handleFormSubmission(latestShapeData)
   }
 
   /* ------------------------------------------------------------------------ */
-  /* Close modal                                                               */
+  /* Close modal                                                              */
   /* ------------------------------------------------------------------------ */
 
   const handleClose = () => {
@@ -1115,7 +1205,7 @@ const AddLocationModal: React.FC<{
   }
 
   /* ------------------------------------------------------------------------ */
-  /* Loading error                                                             */
+  /* Google Maps error                                                        */
   /* ------------------------------------------------------------------------ */
 
   if (loadError) {
@@ -1154,7 +1244,7 @@ const AddLocationModal: React.FC<{
   }
 
   /* ------------------------------------------------------------------------ */
-  /* Skeleton                                                                  */
+  /* Loading skeleton                                                          */
   /* ------------------------------------------------------------------------ */
 
   if (!isDataLoading) {
@@ -1185,7 +1275,14 @@ const AddLocationModal: React.FC<{
             </div>
 
             <div className='modal-body mx-5 mx-xl-15 my-7'>
-              {Object.keys(formValidations).map(field => (
+              {Object.keys({
+                shapeData: true,
+                name: true,
+                address: true,
+                address_type: true,
+                tags: true,
+                note: true
+              }).map(field => (
                 <div className='fv-row mb-7' key={field}>
                   {field !== 'shapeData' && (
                     <label className='fs-6 fw-semibold form-label mb-2'>
@@ -1216,7 +1313,7 @@ const AddLocationModal: React.FC<{
   }
 
   /* ------------------------------------------------------------------------ */
-  /* Main UI                                                                   */
+  /* Main UI                                                                  */
   /* ------------------------------------------------------------------------ */
 
   return (
@@ -1258,204 +1355,241 @@ const AddLocationModal: React.FC<{
               onSubmit={onSubmitChange}
             >
               {/* ============================================================ */}
-              {/* NAME / ADDRESS / ADDRESS TYPE / TAGS / NOTE / MAP            */}
+              {/* MAP                                                          */}
               {/* ============================================================ */}
 
-              {Object.keys(formValidations).map(field => (
-                <div className='fv-row mb-7' key={field}>
-                  {/* ------------------------------------------------------ */}
-                  {/* Label                                                    */}
-                  {/* ------------------------------------------------------ */}
+              <div className='fv-row mb-7'>
+                <div
+                  style={{
+                    position: 'relative'
+                  }}
+                >
+                  {isLoaded ? (
+                    <>
+                      <GoogleMap
+                        center={mapCenter}
+                        zoom={10}
+                        mapContainerStyle={mapContainerStyle}
+                        onLoad={onMapLoad}
+                        options={{
+                          mapTypeControl: false,
+                          streetViewControl: false,
+                          fullscreenControl: true
+                        }}
+                      />
 
-                  {field !== 'shapeData' && (
-                    <label className='fs-6 fw-semibold form-label mb-2'>
-                      <span
-                        className={
-                          formValidations[field]?.required ? 'required' : ''
-                        }
+                      {/* -------------------------------------------------- */}
+                      {/* Drawing controls                                    */}
+                      {/* -------------------------------------------------- */}
+
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: 10,
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          zIndex: 1000,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          background: '#ffffff',
+                          padding: 6,
+                          borderRadius: 8,
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                        }}
                       >
-                        {field.replace(/_/g, ' ').toUpperCase()}
-                      </span>
-                    </label>
-                  )}
+                        <button
+                          type='button'
+                          className='btn btn-outline-primary btn-sm'
+                          onClick={() => changeDrawingMode('rectangle')}
+                        >
+                          Box
+                        </button>
 
-                  {/* ====================================================== */}
-                  {/* MAP                                                     */}
-                  {/* ====================================================== */}
+                        <button
+                          type='button'
+                          className='btn btn-outline-primary btn-sm'
+                          onClick={() => changeDrawingMode('circle')}
+                        >
+                          Circle
+                        </button>
 
-                  {field === 'shapeData' ? (
-                    <div
-                      style={{
-                        position: 'relative'
-                      }}
-                    >
-                      {isLoaded ? (
-                        <>
-                          <GoogleMap
-                            center={mapCenter}
-                            zoom={10}
-                            mapContainerStyle={mapContainerStyle}
-                            onLoad={onMapLoad}
-                            options={{
-                              mapTypeControl: false,
-                              streetViewControl: false,
-                              fullscreenControl: true
-                            }}
-                          />
+                        <button
+                          type='button'
+                          className='btn btn-outline-primary btn-sm'
+                          onClick={() => changeDrawingMode('polygon')}
+                        >
+                          Draw
+                        </button>
 
-                          {/* ------------------------------------------------ */}
-                          {/* Drawing buttons                                  */}
-                          {/* ------------------------------------------------ */}
-
-                          <div
-                            style={{
-                              position: 'absolute',
-                              top: 10,
-                              left: '50%',
-                              transform: 'translateX(-50%)',
-                              zIndex: 1000,
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 10,
-                              background: '#ffffff',
-                              padding: 6,
-                              borderRadius: 8,
-                              boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-                            }}
-                          >
-                            <button
-                              type='button'
-                              className='btn btn-outline-primary btn-sm'
-                              onClick={() => changeDrawingMode('rectangle')}
-                            >
-                              Box
-                            </button>
-
-                            <button
-                              type='button'
-                              className='btn btn-outline-primary btn-sm'
-                              onClick={() => changeDrawingMode('circle')}
-                            >
-                              Circle
-                            </button>
-
-                            <button
-                              type='button'
-                              className='btn btn-outline-primary btn-sm'
-                              onClick={() => changeDrawingMode('polygon')}
-                            >
-                              Draw
-                            </button>
-
-                            <button
-                              type='button'
-                              className='btn btn-outline-danger btn-sm'
-                              onClick={clearShape}
-                            >
-                              Clear
-                            </button>
-                          </div>
-                        </>
-                      ) : (
-                        <Skeleton width='100%' height={400} />
-                      )}
-                    </div>
-                  ) : field === 'address' ? (
-                    /* ====================================================== */
-                    /* ADDRESS                                                */
-                    /* ====================================================== */
-
-                    <textarea
-                      className='form-control form-control-solid'
-                      placeholder={`Enter ${field.replace(/_/g, ' ')}`}
-                      name={field}
-                      onChange={changeVehicleFieldHandler}
-                      value={
-                        locationField[field as keyof LocationForm] as string
-                      }
-                      rows={3}
-                    />
-                  ) : field === 'note' ? (
-                    /* ====================================================== */
-                    /* NOTE                                                   */
-                    /* ====================================================== */
-
-                    <textarea
-                      className='form-control form-control-solid'
-                      placeholder={`Enter ${field.replace(/_/g, ' ')}`}
-                      name={field}
-                      onChange={changeVehicleFieldHandler}
-                      value={
-                        locationField[field as keyof LocationForm] as string
-                      }
-                      rows={3}
-                    />
-                  ) : field === 'address_type' ? (
-                    /* ====================================================== */
-                    /* ADDRESS TYPE                                            */
-                    /* ====================================================== */
-
-                    <div className='d-flex flex-wrap gap-3 mt-3 mb-2'>
-                      {loctn?.address_types &&
-                        Object.entries(loctn.address_types).map(
-                          ([key, value]) => (
-                            <div
-                              key={key}
-                              className='align-items-center d-flex'
-                            >
-                              <input
-                                className='form-check-input me-3 cursor-pointer'
-                                name='address_type'
-                                type='radio'
-                                value={key}
-                                id={`address-type-${key}`}
-                                onChange={changeVehicleFieldHandler}
-                                checked={locationField.address_type === key}
-                              />
-
-                              <label
-                                className='form-check-label fs-6'
-                                htmlFor={`address-type-${key}`}
-                              >
-                                {value}
-                              </label>
-                            </div>
-                          )
-                        )}
-                    </div>
+                        <button
+                          type='button'
+                          className='btn btn-outline-danger btn-sm'
+                          onClick={clearShape}
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </>
                   ) : (
-                    /* ====================================================== */
-                    /* TEXT INPUT                                             */
-                    /* ====================================================== */
-
-                    <input
-                      type='text'
-                      className='form-control form-control-solid'
-                      placeholder={`Enter ${field.replace(/_/g, ' ')}`}
-                      name={field}
-                      onChange={changeVehicleFieldHandler}
-                      value={
-                        locationField[field as keyof LocationForm] as string
-                      }
-                    />
-                  )}
-
-                  {/* ------------------------------------------------------ */}
-                  {/* Validation error                                        */}
-                  {/* ------------------------------------------------------ */}
-
-                  {errors[field] && (
-                    <div
-                      className='mt-2'
-                      style={{
-                        color: 'red'
-                      }}
-                    >
-                      {errors[field]}
-                    </div>
+                    <Skeleton width='100%' height={400} />
                   )}
                 </div>
-              ))}
+
+                {errors.shapeData && (
+                  <div
+                    className='mt-2'
+                    style={{
+                      color: 'red'
+                    }}
+                  >
+                    {errors.shapeData}
+                  </div>
+                )}
+              </div>
+
+              {/* ============================================================ */}
+              {/* NAME                                                          */}
+              {/* ============================================================ */}
+
+              <div className='fv-row mb-7'>
+                <label className='fs-6 fw-semibold form-label mb-2'>
+                  <span className='required'>NAME</span>
+                </label>
+
+                <input
+                  type='text'
+                  className='form-control form-control-solid'
+                  placeholder='Enter name'
+                  name='name'
+                  onChange={changeVehicleFieldHandler}
+                  value={locationField.name}
+                />
+
+                {errors.name && (
+                  <div
+                    className='mt-2'
+                    style={{
+                      color: 'red'
+                    }}
+                  >
+                    {errors.name}
+                  </div>
+                )}
+              </div>
+
+              {/* ============================================================ */}
+              {/* ADDRESS                                                       */}
+              {/* ============================================================ */}
+
+              <div className='fv-row mb-7'>
+                <label className='fs-6 fw-semibold form-label mb-2'>
+                  <span className='required'>ADDRESS</span>
+                </label>
+
+                <textarea
+                  className='form-control form-control-solid'
+                  placeholder='Enter address'
+                  name='address'
+                  onChange={changeVehicleFieldHandler}
+                  value={locationField.address}
+                  rows={3}
+                />
+
+                {errors.address && (
+                  <div
+                    className='mt-2'
+                    style={{
+                      color: 'red'
+                    }}
+                  >
+                    {errors.address}
+                  </div>
+                )}
+              </div>
+
+              {/* ============================================================ */}
+              {/* ADDRESS TYPE                                                  */}
+              {/* ============================================================ */}
+
+              <div className='fv-row mb-7'>
+                <label className='fs-6 fw-semibold form-label mb-2'>
+                  <span className='required'>ADDRESS TYPE</span>
+                </label>
+
+                <div className='d-flex flex-wrap gap-3 mt-3 mb-2'>
+                  {loctn?.address_types &&
+                    Object.entries(loctn.address_types).map(([key, value]) => (
+                      <div key={key} className='align-items-center d-flex'>
+                        <input
+                          className='form-check-input me-3 cursor-pointer'
+                          name='address_type'
+                          type='radio'
+                          value={key}
+                          id={`address-type-${key}`}
+                          onChange={changeVehicleFieldHandler}
+                          checked={locationField.address_type === key}
+                        />
+
+                        <label
+                          className='form-check-label fs-6'
+                          htmlFor={`address-type-${key}`}
+                        >
+                          {value}
+                        </label>
+                      </div>
+                    ))}
+                </div>
+
+                {errors.address_type && (
+                  <div
+                    className='mt-2'
+                    style={{
+                      color: 'red'
+                    }}
+                  >
+                    {errors.address_type}
+                  </div>
+                )}
+              </div>
+
+              {/* ============================================================ */}
+              {/* TAGS                                                          */}
+              {/* ============================================================ */}
+
+              <div className='fv-row mb-7'>
+                <label className='fs-6 fw-semibold form-label mb-2'>
+                  <span>TAGS</span>
+                </label>
+
+                <input
+                  type='text'
+                  className='form-control form-control-solid'
+                  placeholder='Enter tags'
+                  name='tags'
+                  onChange={changeVehicleFieldHandler}
+                  value={locationField.tags}
+                />
+              </div>
+
+              {/* ============================================================ */}
+              {/* NOTE                                                          */}
+              {/* ============================================================ */}
+
+              <div className='fv-row mb-7'>
+                <label className='fs-6 fw-semibold form-label mb-2'>
+                  <span>NOTE</span>
+                </label>
+
+                <textarea
+                  className='form-control form-control-solid'
+                  placeholder='Enter note'
+                  name='note'
+                  onChange={changeVehicleFieldHandler}
+                  value={locationField.note}
+                  rows={3}
+                />
+              </div>
 
               {/* ============================================================ */}
               {/* BUTTONS                                                       */}

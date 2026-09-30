@@ -3,14 +3,14 @@ export default {
     // domains: ['uat.apnatelelink.us'],
     remotePatterns: [
       {
-        protocol: 'http',
-        hostname: '127.0.0.1',
+        protocol: 'https',
+        hostname: 'uat.apnatelelink.us',
         pathname: '**'
       }
     ] // Use localhost during development
   },
   serverRuntimeConfig: {
-    HOSTNAME: process.env.FRONTEND_URL || '127.0.0.1', // Use localhost during development
+    HOSTNAME: process.env.FRONTEND_URL || 'uat.apnatelelink.us', // Use localhost during development
     PORT: parseInt(process.env.PORT, 10) || 8000 // Parse to integer
   }
 }
