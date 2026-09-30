@@ -90,6 +90,32 @@ type ShapeData =
     }
 
 /* -------------------------------------------------------------------------- */
+/* Helpers                                                                    */
+/* -------------------------------------------------------------------------- */
+
+const COORDINATE_PRECISION = 9
+
+/*
+ * Terra Draw validates coordinates against `coordinatePrecision`.
+ * Google's computeOffset returns ~15 decimals, which makes
+ * addFeatures() reject the feature, so always round.
+ */
+const round = (n: number) => Number(n.toFixed(COORDINATE_PRECISION))
+
+const DRAW_MODES = ['circle', 'rectangle', 'polygon']
+
+/*
+ * Only real, finished shapes. Skips selection points, midpoints,
+ * closing points, etc. that Terra Draw adds to the snapshot.
+ */
+const isShapeFeature = (feature: any) =>
+  feature?.geometry?.type === 'Polygon' &&
+  DRAW_MODES.includes(feature?.properties?.mode) &&
+  !feature?.properties?.selectionPoint &&
+  !feature?.properties?.midPoint &&
+  !feature?.properties?.closingPoint
+
+/* -------------------------------------------------------------------------- */
 /* Component                                                                  */
 /* -------------------------------------------------------------------------- */
 
@@ -128,6 +154,9 @@ const AddLocationModal: React.FC<{
 
   const [map, setMap] = useState<google.maps.Map | null>(null)
 
+  /* True only after Terra Draw has fired its `ready` event. */
+  const [drawReady, setDrawReady] = useState(false)
+
   const drawRef = useRef<TerraDraw | null>(null)
 
   const mapRef = useRef<google.maps.Map | null>(null)
@@ -144,11 +173,7 @@ const AddLocationModal: React.FC<{
   }
 
   /*
-   * This is ONLY the initial map position.
-   *
-   * Do not pass this through `center={}` because that makes
-   * GoogleMap controlled and can move the map back here
-   * whenever React rerenders.
+   * Initial map position only.
    */
   const mapCenter = useMemo(
     () => ({
@@ -307,9 +332,13 @@ const AddLocationModal: React.FC<{
           return null
         }
 
-        const lats = points.map(point => point.lat)
+        const lats = points.map(
+          (point: { lat: number; lng: number }) => point.lat
+        )
 
-        const lngs = points.map(point => point.lng)
+        const lngs = points.map(
+          (point: { lat: number; lng: number }) => point.lng
+        )
 
         const north = Math.max(...lats)
         const south = Math.min(...lats)
@@ -394,7 +423,7 @@ const AddLocationModal: React.FC<{
 
       const centerLatLng = new google.maps.LatLng(center.lat, center.lng)
 
-      for (let i = 0; i <= numberOfPoints; i++) {
+      for (let i = 0; i < numberOfPoints; i++) {
         const angle = (i / numberOfPoints) * 360
 
         const point = google.maps.geometry.spherical.computeOffset(
@@ -403,13 +432,17 @@ const AddLocationModal: React.FC<{
           angle
         )
 
-        coordinates.push([point.lng(), point.lat()])
+        coordinates.push([round(point.lng()), round(point.lat())])
       }
+
+      /* Close the ring with an identical (already rounded) coordinate. */
+      coordinates.push([coordinates[0][0], coordinates[0][1]])
 
       return {
         type: 'Feature',
         properties: {
-          mode: 'circle'
+          mode: 'circle',
+          radiusKilometers: radius / 1000
         },
         geometry: {
           type: 'Polygon',
@@ -434,11 +467,11 @@ const AddLocationModal: React.FC<{
           type: 'Polygon',
           coordinates: [
             [
-              [west, south],
-              [east, south],
-              [east, north],
-              [west, north],
-              [west, south]
+              [round(west), round(south)],
+              [round(east), round(south)],
+              [round(east), round(north)],
+              [round(west), round(north)],
+              [round(west), round(south)]
             ]
           ]
         }
@@ -451,7 +484,7 @@ const AddLocationModal: React.FC<{
 
     if (shapeData.type === 'polygon') {
       const coordinates = shapeData.paths.map(
-        point => [point.lng, point.lat] as [number, number]
+        point => [round(point.lng), round(point.lat)] as [number, number]
       )
 
       if (
@@ -459,7 +492,7 @@ const AddLocationModal: React.FC<{
         (coordinates[0][0] !== coordinates[coordinates.length - 1][0] ||
           coordinates[0][1] !== coordinates[coordinates.length - 1][1])
       ) {
-        coordinates.push(coordinates[0])
+        coordinates.push([coordinates[0][0], coordinates[0][1]])
       }
 
       return {
@@ -494,12 +527,7 @@ const AddLocationModal: React.FC<{
       return null
     }
 
-    const validFeatures = features.filter(
-      (feature: any) =>
-        feature?.geometry &&
-        feature?.properties?.mode &&
-        ['circle', 'rectangle', 'polygon'].includes(feature.properties.mode)
-    )
+    const validFeatures = features.filter(isShapeFeature)
 
     if (!validFeatures.length) {
       return null
@@ -528,20 +556,14 @@ const AddLocationModal: React.FC<{
 
       const currentShapeData = shapeDataOverride ?? locationField.shapeData
 
-      /* -------------------------------------------------------------------- */
-      /* Shape                                                                 */
-      /* -------------------------------------------------------------------- */
-
+      /* Shape */
       if (!currentShapeData || currentShapeData.trim() === '') {
         validationErrors.shapeData = 'Location map is required'
 
         isValid = false
       }
 
-      /* -------------------------------------------------------------------- */
-      /* Name                                                                  */
-      /* -------------------------------------------------------------------- */
-
+      /* Name */
       if (!locationField.name || locationField.name.trim() === '') {
         validationErrors.name = 'Name is required'
 
@@ -561,10 +583,7 @@ const AddLocationModal: React.FC<{
         }
       }
 
-      /* -------------------------------------------------------------------- */
-      /* Address                                                               */
-      /* -------------------------------------------------------------------- */
-
+      /* Address */
       if (!locationField.address || locationField.address.trim() === '') {
         validationErrors.address = 'Address is required'
 
@@ -575,10 +594,7 @@ const AddLocationModal: React.FC<{
         isValid = false
       }
 
-      /* -------------------------------------------------------------------- */
-      /* Address type                                                          */
-      /* -------------------------------------------------------------------- */
-
+      /* Address type */
       if (
         !locationField.address_type ||
         locationField.address_type.trim() === ''
@@ -688,6 +704,12 @@ const AddLocationModal: React.FC<{
       return
     }
 
+    /*
+     * Reset edit state every time the modal opens so a previously
+     * edited location can never be reused for a different id.
+     */
+    initializedEditShapeRef.current = false
+    setEditData(null)
     setIsDataLoading(false)
 
     const load = async () => {
@@ -740,13 +762,16 @@ const AddLocationModal: React.FC<{
       mapRef.current = mapInstance
 
       const initializeDrawing = () => {
+        /* Map was unmounted before the projection became ready. */
+        if (mapRef.current !== mapInstance) return
+
         if (drawRef.current) return
 
         const draw = new TerraDraw({
           adapter: new TerraDrawGoogleMapsAdapter({
             map: mapInstance,
             lib: google.maps,
-            coordinatePrecision: 9
+            coordinatePrecision: COORDINATE_PRECISION
           }),
 
           modes: [
@@ -798,37 +823,21 @@ const AddLocationModal: React.FC<{
 
         drawRef.current = draw
 
-        draw.start()
-
+        /*
+         * Register listeners BEFORE start() so `ready` is never missed.
+         */
         draw.on('ready', () => {
-          if (!id) {
-            draw.setMode('circle')
-          } else {
-            draw.setMode('select')
-          }
+          setDrawReady(true)
         })
 
-        draw.on('change', features => {
-          if (!features || features.length === 0) return
+        /*
+         * `change` gives (ids, type), NOT features.
+         * Read the snapshot instead.
+         */
+        draw.on('change', () => {
+          const serialized = getLatestShapeData()
 
-          const validFeatures = features.filter(
-            (feature: any) =>
-              feature?.geometry &&
-              feature?.properties?.mode &&
-              ['circle', 'rectangle', 'polygon'].includes(
-                feature.properties.mode
-              )
-          )
-
-          if (!validFeatures.length) return
-
-          const feature = validFeatures[validFeatures.length - 1]
-
-          const converted = featureToShapeData(feature)
-
-          if (!converted) return
-
-          const serialized = JSON.stringify(converted)
+          if (!serialized) return
 
           setShapeData(serialized)
 
@@ -842,6 +851,8 @@ const AddLocationModal: React.FC<{
             shapeData: undefined
           }))
         })
+
+        draw.start()
       }
 
       // Google Maps projection may not be ready immediately
@@ -855,11 +866,34 @@ const AddLocationModal: React.FC<{
         )
       }
     },
-    [featureToShapeData, id]
+    [getLatestShapeData]
   )
 
+  /* ------------------------------------------------------------------------ */
+  /* Map unmount (skeleton swap, modal reload)                                 */
+  /* ------------------------------------------------------------------------ */
+
+  const onMapUnmount = useCallback(() => {
+    try {
+      drawRef.current?.stop()
+    } catch (error) {
+      console.error('Error stopping Terra Draw:', error)
+    }
+
+    drawRef.current = null
+    mapRef.current = null
+    initializedEditShapeRef.current = false
+
+    setDrawReady(false)
+    setMap(null)
+  }, [])
+
+  /* ------------------------------------------------------------------------ */
+  /* Recenter (Add mode only)                                                  */
+  /* ------------------------------------------------------------------------ */
+
   useEffect(() => {
-    if (!open || !map || !isLoaded) return
+    if (!open || !map || !isLoaded || id) return
 
     const timer = setTimeout(() => {
       google.maps.event.trigger(map, 'resize')
@@ -868,23 +902,33 @@ const AddLocationModal: React.FC<{
     }, 100)
 
     return () => clearTimeout(timer)
-  }, [open, map, isLoaded, mapCenter])
+  }, [open, map, isLoaded, mapCenter, id])
 
   /* ------------------------------------------------------------------------ */
-  /* Load existing shape                                                      */
+  /* Initial mode (Add) / load existing shape (Edit)                           */
   /* ------------------------------------------------------------------------ */
 
   useEffect(() => {
-    if (!id || !editData || !map || !drawRef.current || !isLoaded) {
+    if (!open || !map || !isLoaded || !drawReady) return
+
+    const draw = drawRef.current
+
+    if (!draw) return
+
+    /* Add mode */
+    if (!id) {
+      draw.setMode('circle')
+
       return
     }
 
-    if (initializedEditShapeRef.current) {
-      return
-    }
+    /* Edit mode */
+    if (!editData || initializedEditShapeRef.current) return
 
     if (!editData.shapeData) {
       initializedEditShapeRef.current = true
+
+      draw.setMode('circle')
 
       return
     }
@@ -898,18 +942,19 @@ const AddLocationModal: React.FC<{
         return
       }
 
-      const draw = drawRef.current
-
       draw.clear()
 
       const result = draw.addFeatures([feature as any])
 
+      if (result.some(r => !r.valid)) {
+        console.error('Terra Draw rejected feature:', result)
+
+        return
+      }
+
       initializedEditShapeRef.current = true
 
-      /* -------------------------------------------------------------------- */
-      /* Fit bounds                                                            */
-      /* -------------------------------------------------------------------- */
-
+      /* Fit bounds */
       const bounds = new google.maps.LatLngBounds()
 
       if (parsedShape.type === 'circle') {
@@ -918,56 +963,42 @@ const AddLocationModal: React.FC<{
           parsedShape.center.lng
         )
 
-        const northEast = google.maps.geometry.spherical.computeOffset(
-          center,
-          parsedShape.radius,
-          45
-        )
-
-        const southWest = google.maps.geometry.spherical.computeOffset(
-          center,
-          parsedShape.radius,
-          225
-        )
-
-        bounds.extend(northEast)
-
-        bounds.extend(southWest)
-
-        map.fitBounds(bounds)
-      }
-
-      if (parsedShape.type === 'rectangle') {
         bounds.extend(
-          new google.maps.LatLng(
-            parsedShape.bounds.north,
-            parsedShape.bounds.east
+          google.maps.geometry.spherical.computeOffset(
+            center,
+            parsedShape.radius,
+            45
           )
         )
 
         bounds.extend(
-          new google.maps.LatLng(
-            parsedShape.bounds.south,
-            parsedShape.bounds.west
+          google.maps.geometry.spherical.computeOffset(
+            center,
+            parsedShape.radius,
+            225
           )
         )
-
-        map.fitBounds(bounds)
-      }
-
-      if (parsedShape.type === 'polygon') {
-        parsedShape.paths.forEach(point => {
-          bounds.extend(new google.maps.LatLng(point.lat, point.lng))
+      } else if (parsedShape.type === 'rectangle') {
+        bounds.extend({
+          lat: parsedShape.bounds.north,
+          lng: parsedShape.bounds.east
         })
 
-        map.fitBounds(bounds)
+        bounds.extend({
+          lat: parsedShape.bounds.south,
+          lng: parsedShape.bounds.west
+        })
+      } else {
+        parsedShape.paths.forEach(point => bounds.extend(point))
       }
+
+      map.fitBounds(bounds)
 
       draw.setMode('select')
     } catch (error) {
       console.error('Error loading existing shape:', error)
     }
-  }, [id, editData, map, isLoaded, shapeDataToFeature])
+  }, [open, id, editData, map, isLoaded, drawReady, shapeDataToFeature])
 
   /* ------------------------------------------------------------------------ */
   /* Cleanup                                                                  */
@@ -1001,20 +1032,12 @@ const AddLocationModal: React.FC<{
         return
       }
 
-      /*
-       * Save the current viewport.
-       *
-       * This prevents the map from jumping
-       * back to the default location when
-       * changing drawing modes.
-       */
+      /* Save the current viewport so the map doesn't jump. */
       const currentCenter = currentMap.getCenter()
 
       const currentZoom = currentMap.getZoom()
 
-      /*
-       * Remove previous shape.
-       */
+      /* Remove previous shape. */
       draw.clear()
 
       setShapeData(null)
@@ -1029,14 +1052,9 @@ const AddLocationModal: React.FC<{
         shapeData: undefined
       }))
 
-      /*
-       * Change drawing mode.
-       */
       draw.setMode(mode)
 
-      /*
-       * Restore viewport.
-       */
+      /* Restore viewport. */
       if (currentCenter) {
         currentMap.setCenter(currentCenter)
       }
@@ -1110,12 +1128,6 @@ const AddLocationModal: React.FC<{
         shapeData
       }
 
-      console.log('========== LOCATION SAVE ==========')
-      console.log('ID:', id)
-      console.log('Payload:', payload)
-      console.log('ShapeData:', shapeData)
-      console.log('===================================')
-
       const response = await axios({
         method,
         url: apiUrl,
@@ -1125,8 +1137,6 @@ const AddLocationModal: React.FC<{
           'Content-Type': 'application/json'
         }
       })
-
-      console.log('SAVE RESPONSE:', response.data)
 
       if (response.status >= 200 && response.status < 300) {
         updatedLocationData()
@@ -1169,27 +1179,15 @@ const AddLocationModal: React.FC<{
     e.preventDefault()
 
     /*
-     * IMPORTANT:
-     *
-     * Read the shape directly from Terra Draw
-     * before validation.
-     *
-     * React state updates asynchronously, so
-     * relying only on locationField.shapeData
-     * can cause "Location map is required".
+     * Read the shape directly from Terra Draw before validation,
+     * because React state updates asynchronously.
      */
     const latestShapeData = getLatestShapeData() || locationField.shapeData
 
-    /*
-     * Validate using the latest shape.
-     */
     if (!validateForm(latestShapeData)) {
       return
     }
 
-    /*
-     * Keep React state synchronized.
-     */
     if (latestShapeData && latestShapeData !== locationField.shapeData) {
       setShapeData(latestShapeData)
 
@@ -1199,10 +1197,6 @@ const AddLocationModal: React.FC<{
       }))
     }
 
-    /*
-     * Send the latest shape directly.
-     * Do not wait for React state.
-     */
     handleFormSubmission(latestShapeData)
   }
 
@@ -1343,10 +1337,7 @@ const AddLocationModal: React.FC<{
     >
       <div className='modal-dialog modal-dialog-centered w-95 h-90 mw-650px mh-350px'>
         <div className='modal-content'>
-          {/* ---------------------------------------------------------------- */}
-          {/* Header                                                            */}
-          {/* ---------------------------------------------------------------- */}
-
+          {/* Header */}
           <div className='modal-header'>
             <h2 className='fw-bold'>{id ? 'Edit Location' : 'Add Location'}</h2>
 
@@ -1360,20 +1351,14 @@ const AddLocationModal: React.FC<{
             </button>
           </div>
 
-          {/* ---------------------------------------------------------------- */}
-          {/* Body                                                              */}
-          {/* ---------------------------------------------------------------- */}
-
+          {/* Body */}
           <div className='modal-body mx-5 mx-xl-15 my-7'>
             <form
               id='kt_modal_add_location_form'
               className='form fv-plugins-bootstrap5 fv-plugins-framework'
               onSubmit={onSubmitChange}
             >
-              {/* ============================================================ */}
-              {/* MAP                                                          */}
-              {/* ============================================================ */}
-
+              {/* MAP */}
               <div className='fv-row mb-7'>
                 <div
                   style={{
@@ -1387,6 +1372,7 @@ const AddLocationModal: React.FC<{
                         zoom={10}
                         mapContainerStyle={mapContainerStyle}
                         onLoad={onMapLoad}
+                        onUnmount={onMapUnmount}
                         options={{
                           mapTypeControl: false,
                           streetViewControl: false,
@@ -1394,10 +1380,7 @@ const AddLocationModal: React.FC<{
                         }}
                       />
 
-                      {/* -------------------------------------------------- */}
-                      {/* Drawing controls                                    */}
-                      {/* -------------------------------------------------- */}
-
+                      {/* Drawing controls */}
                       <div
                         style={{
                           position: 'absolute',
@@ -1464,10 +1447,7 @@ const AddLocationModal: React.FC<{
                 )}
               </div>
 
-              {/* ============================================================ */}
-              {/* NAME                                                          */}
-              {/* ============================================================ */}
-
+              {/* NAME */}
               <div className='fv-row mb-7'>
                 <label className='fs-6 fw-semibold form-label mb-2'>
                   <span className='required'>NAME</span>
@@ -1494,10 +1474,7 @@ const AddLocationModal: React.FC<{
                 )}
               </div>
 
-              {/* ============================================================ */}
-              {/* ADDRESS                                                       */}
-              {/* ============================================================ */}
-
+              {/* ADDRESS */}
               <div className='fv-row mb-7'>
                 <label className='fs-6 fw-semibold form-label mb-2'>
                   <span className='required'>ADDRESS</span>
@@ -1524,10 +1501,7 @@ const AddLocationModal: React.FC<{
                 )}
               </div>
 
-              {/* ============================================================ */}
-              {/* ADDRESS TYPE                                                  */}
-              {/* ============================================================ */}
-
+              {/* ADDRESS TYPE */}
               <div className='fv-row mb-7'>
                 <label className='fs-6 fw-semibold form-label mb-2'>
                   <span className='required'>ADDRESS TYPE</span>
@@ -1571,10 +1545,7 @@ const AddLocationModal: React.FC<{
                 )}
               </div>
 
-              {/* ============================================================ */}
-              {/* TAGS                                                          */}
-              {/* ============================================================ */}
-
+              {/* TAGS */}
               <div className='fv-row mb-7'>
                 <label className='fs-6 fw-semibold form-label mb-2'>
                   <span>TAGS</span>
@@ -1590,10 +1561,7 @@ const AddLocationModal: React.FC<{
                 />
               </div>
 
-              {/* ============================================================ */}
-              {/* NOTE                                                          */}
-              {/* ============================================================ */}
-
+              {/* NOTE */}
               <div className='fv-row mb-7'>
                 <label className='fs-6 fw-semibold form-label mb-2'>
                   <span>NOTE</span>
@@ -1609,10 +1577,7 @@ const AddLocationModal: React.FC<{
                 />
               </div>
 
-              {/* ============================================================ */}
-              {/* BUTTONS                                                       */}
-              {/* ============================================================ */}
-
+              {/* BUTTONS */}
               <div className='form-btn-grp w-100 text-center pt-10'>
                 <button
                   type='button'
