@@ -666,10 +666,13 @@ const AddLocationModal: React.FC<{
       setLocationField({
         name: location?.name || '',
         address: location?.address || '',
-        address_type: location?.type || '',
+        address_type:
+          location?.type !== null && location?.type !== undefined
+            ? String(location.type)
+            : '',
         tags: location?.tags || '',
-        note: location?.note || '',
-        shapeData: existingShapeData
+        note: location?.notes || '',
+        shapeData: location?.shapeData || null
       })
     } catch (error) {
       console.error('Error fetching edit data:', error)
@@ -901,8 +904,6 @@ const AddLocationModal: React.FC<{
 
       const result = draw.addFeatures([feature as any])
 
-      console.log('Existing shape loaded into Terra Draw:', result)
-
       initializedEditShapeRef.current = true
 
       /* -------------------------------------------------------------------- */
@@ -1100,17 +1101,32 @@ const AddLocationModal: React.FC<{
 
       const method = id ? 'put' : 'post'
 
+      const payload = {
+        name: locationField.name.trim(),
+        address: locationField.address.trim(),
+        address_type: locationField.address_type,
+        tags: locationField.tags.trim(),
+        note: locationField.note.trim(),
+        shapeData
+      }
+
+      console.log('========== LOCATION SAVE ==========')
+      console.log('ID:', id)
+      console.log('Payload:', payload)
+      console.log('ShapeData:', shapeData)
+      console.log('===================================')
+
       const response = await axios({
         method,
         url: apiUrl,
-        data: {
-          ...locationField,
-          shapeData
-        },
+        data: payload,
         headers: {
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       })
+
+      console.log('SAVE RESPONSE:', response.data)
 
       if (response.status >= 200 && response.status < 300) {
         updatedLocationData()
@@ -1528,7 +1544,9 @@ const AddLocationModal: React.FC<{
                           value={key}
                           id={`address-type-${key}`}
                           onChange={changeVehicleFieldHandler}
-                          checked={locationField.address_type === key}
+                          checked={
+                            String(locationField.address_type) === String(key)
+                          }
                         />
 
                         <label
