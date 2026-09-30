@@ -153,7 +153,7 @@ const AddLocationModal: React.FC<{
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAP_KEY!,
     libraries,
-    id: 'google-map-script',
+    id: 'google-map-scripts',
     version: 'weekly'
   })
 
