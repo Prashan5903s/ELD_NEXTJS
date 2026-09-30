@@ -95,6 +95,8 @@
     "socicon": "3.0.5",
     "socket.io-client": "^4.8.3",
     "sweetalert2": "^11.12.4",
+    "terra-draw": "^1.35.0",
+    "terra-draw-google-maps-adapter": "^1.6.2",
     "toastr": "^2.1.4",
     "truck": "file:",
     "yup": "^1.4.0"

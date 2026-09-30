@@ -64,7 +64,7 @@ const SpeedingDetails = () => {
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAP_KEY!,
     libraries, // Make sure 'places' is included or adjust as needed
-    id: "google-map-script",
+    id: "google-map-script6",
     version: "weekly",
   });
 

@@ -13,8 +13,10 @@ import {
   Marker,
   useJsApiLoader,
 } from "@react-google-maps/api";
+
 import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
+
 import { MarkCoordinate } from "../page";
 import Skeleton from "react-loading-skeleton";
 
@@ -47,7 +49,7 @@ const MapWithSearchBar = ({
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAP_KEY!,
     libraries,
-    id: "google-map-script",
+    id: "google-map-scripts",
     version: "weekly",
   });
 

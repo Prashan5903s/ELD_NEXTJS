@@ -261,7 +261,7 @@ export default function Driverdetails() {
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAP_KEY!,
     libraries, // Make sure 'places' is included or adjust as needed
-    id: "google-map-script",
+    id: "google-map-script8",
     version: "weekly",
   });
 
