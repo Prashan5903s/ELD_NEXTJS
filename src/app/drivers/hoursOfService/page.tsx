@@ -546,8 +546,9 @@ export default function HoursOfService ({ params }) {
     if (isNaN(date.getTime())) return datetime
 
     return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
+      hour: '2-digit',
       minute: '2-digit',
+      second: '2-digit',
       hour12: true
     })
   }

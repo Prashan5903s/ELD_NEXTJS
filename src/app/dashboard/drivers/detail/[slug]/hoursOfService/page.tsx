@@ -144,30 +144,6 @@ export default function HoursOfService ({ params }) {
   const { data } = useSession() as { data?: SessionData }
   const token = data?.user?.token
 
-  const findLocationFromLatLng = (lat, lng, index) => {
-    // Check if lat and lng are valid numbers
-    if (isNaN(lat) || isNaN(lng)) {
-      // console.error(`Invalid latlng: (${lat}, ${lng})`);
-      return
-    }
-
-    const geocoder = new google.maps.Geocoder()
-    const latLng = new google.maps.LatLng(lat, lng)
-
-    geocoder.geocode({ location: latLng }, (results, status) => {
-      if (status === 'OK' && results[0]) {
-        setAddresses(prev => ({
-          ...prev,
-          [index]: results[0].formatted_address
-        }))
-      } else {
-        console.error(
-          'Geocode was not successful for the following reason: ' + status
-        )
-      }
-    })
-  }
-
   const fetchDriverDetails = useCallback(
     debounce(async () => {
       if (!slug) return
@@ -254,12 +230,6 @@ export default function HoursOfService ({ params }) {
   const handleCollapseAll = () => {
     setIsAllOpen(false)
     setIsDateOpen(new Set())
-  }
-
-  const handleExpandAll = () => {
-    const allIndexes = new Set(finalData.map((_, index) => index))
-    setIsDateOpen(allIndexes)
-    setIsAllOpen(true)
   }
 
   const [graphDatas, setGraphData] = useState({}) // Object to store data for each row
@@ -483,6 +453,40 @@ export default function HoursOfService ({ params }) {
     return `${formattedHours}:${minutes} ${ampm}`
   }
 
+  function calculateTimeDifference (startTime, endTime) {
+    const start = new Date(`01/01/2000 ${startTime}`)
+    const end = new Date(`01/01/2000 ${endTime}`)
+
+    let diff = end.getTime() - start.getTime()
+
+    if (diff < 0) {
+      diff += 24 * 60 * 60 * 1000 // Handle crossing over midnight
+    }
+
+    const hours = Math.floor(diff / 1000 / 60 / 60)
+    const minutes = Math.floor((diff / 1000 / 60) % 60)
+    const seconds = Math.floor((diff / 1000) % 60)
+
+    return `${hours.toString().padStart(2, '0')}:${minutes
+      .toString()
+      .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+  }
+
+  function formatTo12Hour (datetime) {
+    if (!datetime) return ''
+
+    const date = new Date(datetime.replace(' ', 'T'))
+
+    if (isNaN(date.getTime())) return datetime
+
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    })
+  }
+
   var tableData =
     Array.isArray(log) && log.length > 0
       ? log.map(logEntry => {
@@ -493,24 +497,12 @@ export default function HoursOfService ({ params }) {
           const endLoc = logEntry[dateKey][4]
           var dataEntry = logEntry[dateKey][2]
 
-          function calculateTimeDifference (startTime, endTime) {
-            const start = new Date(`01/01/2000 ${startTime}`)
-            const end = new Date(`01/01/2000 ${endTime}`)
-
-            let diff = end.getTime() - start.getTime()
-
-            if (diff < 0) {
-              diff += 24 * 60 * 60 * 1000 // Handle crossing over midnight
+          dataEntry.forEach(row => {
+            if (Array.isArray(row)) {
+              if (row[4]) row[4] = formatTo12Hour(row[4])
+              if (row[5]) row[5] = formatTo12Hour(row[5])
             }
-
-            const hours = Math.floor(diff / 1000 / 60 / 60)
-            const minutes = Math.floor((diff / 1000 / 60) % 60)
-            const seconds = Math.floor((diff / 1000) % 60)
-
-            return `${hours.toString().padStart(2, '0')}:${minutes
-              .toString()
-              .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-          }
+          })
 
           if (dataEntry.length > 0) {
             var stime = dataEntry[0][4]
@@ -526,7 +518,7 @@ export default function HoursOfService ({ params }) {
                 null,
                 '......',
                 '12:00:00 AM',
-                `${stime}`,
+                `${formatTo12Hour(stime)}`,
                 [],
                 '....'
               ])
