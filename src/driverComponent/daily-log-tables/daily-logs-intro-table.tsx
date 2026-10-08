@@ -179,7 +179,7 @@ const DriverDetails: React.FC<DriverDetailsProps> = ({ data, userData, compName,
   const timeString = hosData && hosData[2] && hosData[2][0] && hosData[2][0][4];
   var timeSlot = null;
 
-  if (timeString === "12:00:00 AM") {
+  if (timeString === "12:00 AM") {
     timeSlot = 'midnight';
   } else if (timeString === "12:00 PM") {
     timeSlot = 'midday';

@@ -570,18 +570,18 @@ export default function HoursOfService ({ params }) {
 
           if (dataEntry.length > 0) {
             var stime = dataEntry[0][4]
-            var etime = '12:00:00 AM'
+            var etime = '12:00 AM'
             const start24h = convertTo24HourFormat(stime)
             const end24h = convertTo24HourFormat(etime)
 
             const result = calculateTimeDifference(end24h, start24h)
-            if (stime != '12:00:00 AM') {
+            if (stime != '12:00 AM') {
               dataEntry.unshift([
                 `${result}`,
                 'Off duty',
                 null,
                 '......',
-                '12:00:00 AM',
+                '12:00 AM',
                 `${formatTo12Hour(stime)}`,
                 [],
                 '....'
@@ -593,7 +593,7 @@ export default function HoursOfService ({ params }) {
               'Off duty',
               null,
               '......',
-              '12:00:00 AM',
+              '12:00 AM',
               '12:00 PM',
               [],
               '....'

@@ -47,7 +47,7 @@ export const SpeedingDetailsMap = (data) => {
       const timeData = item?.event_date_time;
 
       // Convert timeData to the desired format: HH:mm AM/PM
-      const formattedTime = timeData ? formatTime(timeData) : "12:00:00 AM"; // Fallback if timeData is null
+      const formattedTime = timeData ? formatTime(timeData) : "12:00 AM"; // Fallback if timeData is null
 
       return {
         id: item.id,
