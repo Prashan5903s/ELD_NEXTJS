@@ -1,216 +1,141 @@
-import React from 'react';
-import axios from 'axios';
-import Swal from 'sweetalert2';
-import { useSession } from 'next-auth/react';
+'use client'
 
-const ToggleSwitch = ({ status, vehicleId, updateVehiclesList }) => {
+import React, { useEffect, useState } from 'react'
+import axios from 'axios'
+import Swal from 'sweetalert2'
+import { useSession } from 'next-auth/react'
 
-    const url = process.env.NEXT_PUBLIC_BACKEND_API_URL;
+interface ToggleSwitchProps {
+  status: boolean | number
+  vehicleId: string | number
+  updateVehiclesList?: () => void
+}
 
+interface SessionUser {
+  token?: string
+}
 
-    interface User {
-        token: string;
-        // Add other properties you expect in the user object
+interface SessionData {
+  user?: SessionUser
+}
+
+const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
+  status,
+  vehicleId,
+  updateVehiclesList
+}) => {
+  const url = process.env.NEXT_PUBLIC_BACKEND_API_URL
+  const { data: session } = useSession()
+  const token = (session as SessionData | null)?.user?.token
+
+  const [isActive, setIsActive] = useState(Boolean(status))
+  const [isUpdating, setIsUpdating] = useState(false)
+
+  useEffect(() => {
+    setIsActive(Boolean(status))
+  }, [status])
+
+  const handleToggle = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const nextStatus = event.target.checked
+    const row = event.currentTarget.closest('tr')
+    const vehicleName =
+      row?.querySelector('td')?.textContent?.trim() || 'this vehicle'
+
+    if (isUpdating) return
+
+    if (!token || !url) {
+      await Swal.fire({
+        title: 'Error',
+        text: 'Authentication or backend configuration is missing.',
+        icon: 'error'
+      })
+      return
     }
 
-    interface SessionData {
-        user?: User;
-        // Add other properties you expect in the session data
-    }
+    const action = nextStatus ? 'Activate' : 'Deactivate'
+    const actionLower = nextStatus ? 'activated' : 'deactivated'
 
-    const { data: session } = useSession() as { data?: SessionData } || {};
+    const result = await Swal.fire({
+      text: `Are you sure you want to ${action} ${vehicleName}?`,
+      icon: 'warning',
+      showCancelButton: true,
+      buttonsStyling: false,
+      confirmButtonText: `Yes, ${action}!`,
+      cancelButtonText: 'No, cancel',
+      customClass: {
+        confirmButton: 'btn fw-bold btn-danger',
+        cancelButton: 'btn fw-bold btn-active-light-primary'
+      }
+    })
 
-    const token = session && session.user && session?.user?.token;
+    // Keep the existing state if the user cancels.
+    if (!result.isConfirmed) return
 
-    const handleToggle = async (e) => {
-        e.preventDefault();
-        const toggle = e.target;
-        // Select parent row
-        const parent = e.target.closest('tr');
+    setIsUpdating(true)
 
-        // Get package name
-        const vehicleName = parent.querySelectorAll('td')[0].innerText;
+    try {
+      await Swal.fire({
+        text: `${action}ing ${vehicleName}...`,
+        icon: 'info',
+        showConfirmButton: false,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        didOpen: () => Swal.showLoading()
+      })
 
-        if (toggle.checked) {
-            Swal.fire({
-                text: "Are you sure you want to Activate " + vehicleName + "?",
-                icon: "warning",
-                showCancelButton: true,
-                buttonsStyling: false,
-                confirmButtonText: "Yes, Activate!",
-                cancelButtonText: "No, cancel",
-                customClass: {
-                    confirmButton: "btn fw-bold btn-danger",
-                    cancelButton: "btn fw-bold btn-active-light-primary"
-                }
-            }).then(async function (result) {
-                if (result.value) {
-                    Swal.fire({
-                        text: "Activating " + vehicleName,
-                        icon: "info",
-                        buttonsStyling: false,
-                        showConfirmButton: false,
-                        timer: 2000
-                    }).then(async function () {
-                        try {
-                            // Make API call to delete the vehicle
-                            const response = await axios.delete(`${url}/transport/vehicle/${vehicleId}`, {
-                                headers: {
-                                    'Authorization': `Bearer ${token}`,
-                                },
-                            });
-                            if (response.status === 200) {
-                                Swal.fire({
-                                    text: "You have activated the " + vehicleName + "!",
-                                    icon: "success",
-                                    buttonsStyling: false,
-                                    confirmButtonText: "Ok, got it",
-                                    customClass: {
-                                        confirmButton: "btn fw-bold btn-primary",
-                                    }
-                                }).then(function (t) {
-                                    // Call the updateVehiclesList function if it's defined
-                                    if (typeof updateVehiclesList === 'function') {
-                                        updateVehiclesList();
-                                    }
-                                    toggle.checked = !toggle.checked;
-
-                                });
-                            } else {
-                                Swal.fire({
-                                    text: vehicleName + " was not activated.",
-                                    icon: "error",
-                                    buttonsStyling: false,
-                                    confirmButtonText: "Ok, got it",
-                                    customClass: {
-                                        confirmButton: "btn fw-bold btn-primary",
-                                    }
-                                }).then(function (t) {
-                                    console.error('Failed to change vehicle status');
-                                });
-                            }
-                        } catch (error) {
-                            console.error('API error:', error);
-                            Swal.fire({
-                                text: vehicleName + " was not activated.",
-                                icon: "error",
-                                buttonsStyling: false,
-                                confirmButtonText: "Ok, got it",
-                                customClass: {
-                                    confirmButton: "btn fw-bold btn-primary",
-                                }
-                            });
-                        }
-                    });
-                } else if (result.dismiss === Swal.DismissReason.cancel) {
-                    Swal.fire({
-                        text: vehicleName + " was not activated.",
-                        icon: "error",
-                        buttonsStyling: false,
-                        confirmButtonText: "Ok, got it",
-                        customClass: {
-                            confirmButton: "btn fw-bold btn-primary",
-                        }
-                    });
-                }
-            });
-        } else {
-            Swal.fire({
-                text: "Are you sure you want to Deactivate " + vehicleName + "?",
-                icon: "warning",
-                showCancelButton: true,
-                buttonsStyling: false,
-                confirmButtonText: "Yes, Deactivate!",
-                cancelButtonText: "No, cancel",
-                customClass: {
-                    confirmButton: "btn fw-bold btn-danger",
-                    cancelButton: "btn fw-bold btn-active-light-primary"
-                }
-            }).then(async function (result) {
-                if (result.value) {
-                    Swal.fire({
-                        text: "Deactivating " + vehicleName,
-                        icon: "info",
-                        buttonsStyling: false,
-                        showConfirmButton: false,
-                        timer: 2000
-                    }).then(async function () {
-                        try {
-                            // Make API call to delete the vehicle
-                            const response = await axios.delete(`${url}/transport/vehicle/${vehicleId}`, {
-                                headers: {
-                                    'Authorization': `Bearer ${token}`,
-                                },
-                            });
-                            if (response.status === 200) {
-                                Swal.fire({
-                                    text: "You have deactivated the " + vehicleName + "!",
-                                    icon: "success",
-                                    buttonsStyling: false,
-                                    confirmButtonText: "Ok, got it",
-                                    customClass: {
-                                        confirmButton: "btn fw-bold btn-primary",
-                                    }
-                                }).then(function (t) {
-                                    // Call the updateVehiclesList function if it's defined
-                                    if (typeof updateVehiclesList === 'function') {
-                                        updateVehiclesList();
-                                    }
-                                    toggle.checked = !toggle.checked;
-
-                                });
-                            } else {
-                                Swal.fire({
-                                    text: vehicleName + " was not deactivated.",
-                                    icon: "error",
-                                    buttonsStyling: false,
-                                    confirmButtonText: "Ok, got it",
-                                    customClass: {
-                                        confirmButton: "btn fw-bold btn-primary",
-                                    }
-                                }).then(function (t) {
-                                    console.error('Failed to change vehicle status');
-                                });
-                            }
-                        } catch (error) {
-                            console.error('API error:', error);
-                            Swal.fire({
-                                text: vehicleName + " was not deactivated.",
-                                icon: "error",
-                                buttonsStyling: false,
-                                confirmButtonText: "Ok, got it",
-                                customClass: {
-                                    confirmButton: "btn fw-bold btn-primary",
-                                }
-                            });
-                        }
-                    });
-                } else if (result.dismiss === Swal.DismissReason.cancel) {
-                    Swal.fire({
-                        text: vehicleName + " was not deactivated.",
-                        icon: "error",
-                        buttonsStyling: false,
-                        confirmButtonText: "Ok, got it",
-                        customClass: {
-                            confirmButton: "btn fw-bold btn-primary",
-                        }
-                    });
-                }
-            });
+      // Preserves your existing API method and endpoint.
+      // Verify that your backend supports this for BOTH actions.
+      const response = await axios.delete(
+        `${url}/transport/vehicle/${vehicleId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
         }
+      )
 
-    };
+      if (response.status === 200) {
+        setIsActive(nextStatus)
 
-    return (
-        <label className="form-switch form-check-solid">
-            <input
-                type="checkbox"
-                className="form-check-input border"
-                defaultChecked={status}  // Set default check status; change as needed
-                onClick={handleToggle}
-            />
-        </label>
-    );
-};
+        await Swal.fire({
+          text: `${vehicleName} has been ${actionLower}!`,
+          icon: 'success',
+          buttonsStyling: false,
+          confirmButtonText: 'OK',
+          customClass: {
+            confirmButton: 'btn fw-bold btn-primary'
+          }
+        })
 
-export default ToggleSwitch;
+        updateVehiclesList?.()
+      } else {
+        throw new Error('Failed to change vehicle status.')
+      }
+    } catch (error) {
+      console.error('Error updating vehicle status:', error)
+
+      await Swal.fire({
+        text: `${vehicleName} could not be ${actionLower}.`,
+        icon: 'error',
+        confirmButtonText: 'OK'
+      })
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  return (
+    <label className='form-switch form-check-solid'>
+      <input
+        type='checkbox'
+        className='form-check-input border'
+        checked={isActive}
+        onChange={handleToggle}
+        disabled={isUpdating}
+        aria-label={`Toggle status for vehicle ${vehicleId}`}
+      />
+    </label>
+  )
+}
+
+export default ToggleSwitch
